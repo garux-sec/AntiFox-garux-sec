@@ -1063,7 +1063,10 @@
       "modelsEmpty": "No models returned by the provider",
       "modelsFailed": "Failed to fetch models: {{error}}"
     },
-    "fetchModels": "Fetch Models"
+    "fetchModels": "Fetch Models",
+    "priceHint": "Prices are USD per 1M tokens (input/output), estimated from the built-in table; \"—\" = unknown model.",
+    "priceTooltip": "≈ ${{in}} in / ${{out}} out / ${{cache}} cached — per 1M tokens",
+    "priceUnknownTip": "No price in the built-in table (shown as —)"
   },
   "rbac": {
     "title": "User Management",

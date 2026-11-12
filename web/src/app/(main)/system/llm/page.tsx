@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/lib/api";
 import type { LLMProfile, LLMPoolStatus } from "@/lib/types";
+import { priceFor } from "@/lib/llm-pricing";
 import { cn } from "@/lib/utils";
 
 // 思考强度档位（仅在开关打开时生效）。
@@ -684,23 +685,34 @@ export default function LLMPage() {
                     </Button>
                   </div>
                   {fetchedModels.length > 0 && (
-                    <div className="mt-1 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2">
-                      {fetchedModels.map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setModel(m)}
-                          className={cn(
-                            "rounded px-2 py-0.5 font-mono text-[11px] transition-colors",
-                            m === model
-                              ? "bg-foreground text-background"
-                              : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                          )}
-                        >
-                          {m}
-                        </button>
-                      ))}
+                    <>
+                    <div className="mt-1 flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2">
+                      {fetchedModels.map((m) => {
+                        const p = priceFor(m);
+                        const active = m === model;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setModel(m)}
+                            title={p ? t("llm.priceTooltip", { in: p.input, out: p.output, cache: p.cacheRead }) : t("llm.priceUnknownTip")}
+                            className={cn(
+                              "flex flex-col items-start gap-0.5 rounded px-2 py-1 font-mono text-[11px] transition-colors",
+                              active
+                                ? "bg-foreground text-background"
+                                : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                            )}
+                          >
+                            <span>{m}</span>
+                            <span className={cn("text-[9px]", active ? "text-background/70" : p ? "text-emerald-500" : "text-muted-foreground/60")}>
+                              {p ? `$${p.input}/$${p.output} ·1M` : "—"}
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
+                    <p className="text-[10px] text-muted-foreground/70">{t("llm.priceHint")}</p>
+                    </>
                   )}
                 </div>
 

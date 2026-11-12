@@ -1063,7 +1063,10 @@
       "modelsEmpty": "該提供方未回傳任何模型",
       "modelsFailed": "取得模型失敗：{{error}}"
     },
-    "fetchModels": "取得模型"
+    "fetchModels": "取得模型",
+    "priceHint": "價格為每 100 萬 token 的美元(輸入/輸出),依內建表估算;\"—\" = 未知模型。",
+    "priceTooltip": "≈ 輸入 ${{in}} / 輸出 ${{out}} / 快取 ${{cache}} — 每 100 萬 token",
+    "priceUnknownTip": "內建價格表中無此模型(顯示為 —)"
   },
   "rbac": {
     "title": "使用者管理",
