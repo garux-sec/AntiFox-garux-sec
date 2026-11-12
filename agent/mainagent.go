@@ -121,6 +121,6 @@ func (m *MainAgent) Chat(ctx context.Context, taskID int64, as *db.AssetStore, t
 			r.Worker = "mainagent"
 			emit(r)
 		}
-	})
+	}, nil)
 	return text, err
 }

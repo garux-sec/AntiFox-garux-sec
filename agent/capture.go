@@ -24,17 +24,33 @@ import (
 func captureRun(ctx context.Context, opts agentcore.Options, input string, emit func(db.Activity)) (string, harness.TerminalReason, error) {
 	s := agentcore.NewSession(opts)
 	defer s.Close() // release the session's background-task manager (temp dir + processes)
-	return captureRunSession(ctx, s, input, emit)
+	return captureRunSession(ctx, s, input, emit, nil)
+}
+
+// LiveEvent is an ephemeral, un-persisted streaming event for live UI typing:
+// Type "delta" carries a Kind ("text"/"thinking") and the Text fragment as it
+// arrives from the model; Type "flush" signals that the buffered segment was just
+// persisted as an Activity (the live tail should be reconciled against it). It is
+// delivered via the optional onLive callback, separate from the DB-persisted emit.
+type LiveEvent struct {
+	Type string `json:"type"` // "delta" | "flush"
+	Kind string `json:"kind,omitempty"` // "text" | "thinking"
+	Text string `json:"text,omitempty"`
 }
 
 // captureRunSession is captureRun over an existing session, so a caller can run
 // multiple prompts on the SAME conversation (e.g. a settlement round that reuses
 // the worker's accumulated context after the main run hit max_turns).
-func captureRunSession(ctx context.Context, s *agentcore.Session, input string, emit func(db.Activity)) (string, harness.TerminalReason, error) {
+func captureRunSession(ctx context.Context, s *agentcore.Session, input string, emit func(db.Activity), onLive func(LiveEvent)) (string, harness.TerminalReason, error) {
 	var reason harness.TerminalReason
 	rec := func(r db.Activity) {
 		if emit != nil {
 			emit(r)
+		}
+	}
+	live := func(ev LiveEvent) {
+		if onLive != nil {
+			onLive(ev)
 		}
 	}
 	toolNames := map[string]string{} // tool_use id -> name, to label results
@@ -51,6 +67,9 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 		tkind = ""
 		if s != "" {
 			rec(db.Activity{Kind: k, Summary: firstLine(s, 200), Detail: s})
+			// Tell the live stream this segment is now persisted so the UI can
+			// reconcile its ephemeral tail against the real Activity.
+			live(LiveEvent{Type: "flush"})
 		}
 	}
 	addDelta := func(kind, text string) {
@@ -62,6 +81,9 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 		}
 		tkind = kind
 		tbuf.WriteString(text)
+		// Push the fragment to the live stream for token-by-token UI typing. This
+		// is ephemeral (never persisted); the DB record is written on flush().
+		live(LiveEvent{Type: "delta", Kind: kind, Text: text})
 	}
 
 	var finalText string

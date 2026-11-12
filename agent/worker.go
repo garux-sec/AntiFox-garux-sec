@@ -309,6 +309,6 @@ func (w *Worker) Execute(ctx context.Context, name string, taskID int64, as *db.
 		runCtx, runCancel = context.WithTimeout(ctx, maxDur+settleHardGrace)
 		defer runCancel()
 	}
-	_, reason, err := captureRunSession(runCtx, s, input, emitWrap)
+	_, reason, err := captureRunSession(runCtx, s, input, emitWrap, nil)
 	return reason, tsx.Writes(), err
 }

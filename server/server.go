@@ -55,6 +55,8 @@ type Server struct {
 	enrichMu   sync.Mutex
 	enrichJobs map[int64]*enrichJob
 
+	convHub *convHub // per-conversation pub/sub for live-typing SSE (ephemeral)
+
 	cfgMu     sync.Mutex
 	mainAgent *agent.MainAgent // nil when no LLM provider is configured
 	chatAgent *agent.ChatAgent // conversational runner for the chat page; nil w/o LLM
@@ -131,7 +133,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string) *Serv
 	if err != nil {
 		log.Fatalf("[auth] JWT key: %v", err)
 	}
-	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, dataDir: dataDir, jwtKey: key, chatBusy: map[string]bool{},
+	s := &Server{m: m, engine: NewEngine(m), ctx: ctx, skillDir: skillDir, dataDir: dataDir, jwtKey: key, convHub: newConvHub(), chatBusy: map[string]bool{},
 		chatCancel: map[string]context.CancelFunc{}, chatLock: map[string]*sync.Mutex{}, triggerQ: map[string][]triggeredRun{}, triggerRun: map[string]bool{},
 		profAgents: map[int64]*profBundle{}, profChatAgents: map[int64]*agent.ChatAgent{}, reportJobs: map[string]*reportJob{},
 		enrichJobs: map[int64]*enrichJob{}, provCache: map[int64]llm.Provider{}}
@@ -697,6 +699,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PATCH /api/conversations/{id}/profile", s.pgUpdateConversation)
 	mux.HandleFunc("DELETE /api/conversations/{id}", s.pgDeleteConversation)
 	mux.HandleFunc("GET /api/conversations/{id}/messages", s.pgConversationMessages)
+	mux.HandleFunc("GET /api/conversations/{id}/stream", s.pgConversationStream)
 	mux.HandleFunc("POST /api/conversations/{id}/messages", s.pgSendConversationMessage)
 	mux.HandleFunc("POST /api/conversations/{id}/stop", s.pgStopConversation)
 	mux.HandleFunc("GET /api/conversations/{id}/messages/{seq}", s.pgConversationMsgDetail)

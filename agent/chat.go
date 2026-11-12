@@ -74,7 +74,7 @@ type chatVars struct{}
 // but each agent decides on/off). emit receives each execution step (thinking /
 // tool_use / tool_result / text / result), tagged with the agent key as the
 // worker lane.
-func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message string, maxTurns int, maxDuration time.Duration, webSearch bool, emit func(db.Activity)) (string, error) {
+func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message string, maxTurns int, maxDuration time.Duration, webSearch bool, emit func(db.Activity), onLive func(LiveEvent)) (string, error) {
 	// gate the global web-search opts by this agent's own flag.
 	ws := c.webSearch
 	if !webSearch {
@@ -147,6 +147,6 @@ func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message strin
 			r.Worker = agentKey
 			emit(r)
 		}
-	})
+	}, onLive)
 	return text, err
 }

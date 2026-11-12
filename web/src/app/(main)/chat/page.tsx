@@ -34,7 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { api } from "@/lib/api";
+import { api, sseUrl } from "@/lib/api";
 import type { Activity, Agent, Conversation, LLMProfile } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -317,7 +317,11 @@ function ChatView({
   const [input, setInput] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [stopping, setStopping] = React.useState(false);
+  // live streamed (not-yet-persisted) tail of the in-progress answer / reasoning.
+  const [liveText, setLiveText] = React.useState("");
+  const [liveThinking, setLiveThinking] = React.useState("");
   const cursorRef = React.useRef(0);
+  const esRef = React.useRef<EventSource | null>(null);
   const agent = agents.find((a) => a.key === conv.agent_key);
   const currentProfileId = conv.llm_profile_id ?? null;
 
@@ -350,6 +354,8 @@ function ChatView({
     cursorRef.current = 0;
     setMessages([]);
     setRunning(false);
+    setLiveText("");
+    setLiveThinking("");
     let live = true;
     api
       .conversationMessages(conv.id, 0)
@@ -390,6 +396,60 @@ function ChatView({
     };
   }, [running, conv.id, onTitleMaybeChanged]);
 
+  // live token stream: while running, open an SSE connection and append deltas to
+  // liveText/liveThinking. On `flush` the buffered segment was just persisted, so we
+  // pull it as a normal Activity (advancing the same cursor the poll uses) and clear
+  // the live tail — the persisted block takes over with no duplication.
+  React.useEffect(() => {
+    if (!running) {
+      // not running: ensure the stream is closed and the live tail is cleared.
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
+      setLiveText("");
+      setLiveThinking("");
+      return;
+    }
+    const es = new EventSource(sseUrl(`/api/conversations/${conv.id}/stream`));
+    esRef.current = es;
+    es.onmessage = (ev) => {
+      let data: { type?: string; kind?: string; text?: string };
+      try {
+        data = JSON.parse(ev.data);
+      } catch {
+        return; // ignore non-JSON frames
+      }
+      if (data.type === "delta") {
+        if (data.kind === "text") setLiveText((p) => p + (data.text ?? ""));
+        else if (data.kind === "thinking") setLiveThinking((p) => p + (data.text ?? ""));
+      } else if (data.type === "flush") {
+        // reconcile: fetch the just-persisted segment, append + advance cursor (same
+        // as the poll), then clear the live tail so there is no duplicate rendering.
+        api
+          .conversationMessages(conv.id, cursorRef.current)
+          .then((r) => {
+            if (r.items.length) {
+              setMessages((prev) => [...prev, ...r.items]);
+              cursorRef.current = r.cursor;
+            }
+          })
+          .catch(() => {
+            /* transient — poll will still reconcile */
+          })
+          .finally(() => {
+            setLiveText("");
+            setLiveThinking("");
+          });
+      }
+    };
+    // onerror: let EventSource auto-reconnect (default) — don't spam or close here.
+    return () => {
+      es.close();
+      if (esRef.current === es) esRef.current = null;
+    };
+  }, [running, conv.id]);
+
   // ---- transcript auto-scroll (open → bottom; stick to bottom unless scrolled up) ----
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   const atBottomRef = React.useRef(true);
@@ -421,7 +481,7 @@ function ChatView({
     if (!atBottomRef.current) return;
     const vp = viewport();
     if (vp) vp.scrollTop = vp.scrollHeight;
-  }, [messages, running, viewport]);
+  }, [messages, running, liveText, viewport]);
 
   // Per-conversation token total, live — same accounting as the main-agent
   // console: completed runs' `result` sum + the in-progress run's latest `usage`.
@@ -451,6 +511,8 @@ function ChatView({
     if (!msg || sending || running) return;
     setSending(true);
     setInput("");
+    setLiveText("");
+    setLiveThinking("");
     try {
       await api.sendConversationMessage(conv.id, msg);
       setRunning(true);
@@ -522,7 +584,26 @@ function ChatView({
               {t("chat.startWith", { name: agent?.name ?? conv.agent_key })}
             </div>
           ) : (
-            <Transcript activity={messages} live={running} chat fetchDetail={fetchDetail} />
+            <>
+              {/* the bounce placeholder shows only before the first token arrives;
+                  once liveText streams in, the in-progress bubble takes over. */}
+              <Transcript activity={messages} live={running && !liveText} chat fetchDetail={fetchDetail} />
+              {running && liveThinking && (
+                // faint reasoning preview while streaming (cleared on flush).
+                <div className="text-muted-foreground mb-1 whitespace-pre-wrap break-words px-1 text-[11px] italic opacity-70">
+                  {liveThinking}
+                </div>
+              )}
+              {running && liveText && (
+                // in-progress assistant bubble — styled like AnswerBlock, but plain
+                // whitespace-pre-wrap text (no markdown) for the un-persisted tail.
+                <div className="mb-2 mt-1 flex">
+                  <div className="min-w-0 flex-1 whitespace-pre-wrap break-words rounded-lg bg-muted px-3 py-2 text-sm">
+                    {liveText}
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </ScrollArea>

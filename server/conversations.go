@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"antifox/agent"
 	"antifox/db"
 	"antifox/intercept"
 )
@@ -319,9 +320,12 @@ func (s *Server) runConversationSync(c *db.Conversation, msg, busyKey string) {
 			log.Printf("[conv %d] append activity failed: %v", c.ID, err)
 		}
 	}
+	// onLive streams ephemeral token deltas to any open SSE client for live typing;
+	// it is never persisted (emit above owns the DB record written on flush).
+	onLive := func(ev agent.LiveEvent) { s.convHub.pub(c.ID, ev) }
 	// On a manual stop ctx is cancelled; Chat already emits a clean "已手动停止"
 	// step, so skip the raw-error entry — only surface genuine failures.
-	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit); err != nil && ctx.Err() == nil {
+	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit, onLive); err != nil && ctx.Err() == nil {
 		_, _ = pg.AppendConvActivity(c.ID, db.Activity{Worker: c.AgentKey, Kind: "text", IsError: true,
 			Summary: "（出错：" + err.Error() + "）", Detail: err.Error()})
 	}
