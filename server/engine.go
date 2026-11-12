@@ -488,7 +488,7 @@ func (e *Engine) plannerLoop(ctx context.Context, t *Task) {
 			// round marker: each Plan() is one planner round; emit a boundary so the
 			// UI can separate rounds in the transcript (kind='round').
 			e.emitActivity(t, db.Activity{Worker: "planner", Kind: "round",
-				Summary: fmt.Sprintf("第 %d 轮规划", e.nextPlannerRound(t.ID))})
+				Summary: fmt.Sprintf("Round %d planning", e.nextPlannerRound(t.ID))})
 			// which intents' completion triggered this round (may be several — debounce
 			// coalesces a burst; empty for non-completion wakes like a new hint).
 			doneIntents := t.drainDone()

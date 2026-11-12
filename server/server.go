@@ -1216,7 +1216,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 	// fires before any goal nodes exist.
 	go func() {
 		s.engine.emitActivity(t, db.Activity{Worker: "planner", Kind: "round",
-			Summary: "第 0 轮目标拆解"})
+			Summary: "Round 0 · Goal decomposition"})
 		goals := s.createGoals(s.ctx, t, func(r db.Activity) {
 			s.engine.emitActivity(t, r)
 		})

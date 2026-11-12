@@ -59,12 +59,12 @@ func DecomposeGoals(ctx context.Context, c Config, goalText, desc string, emit f
 	captured := false
 	submitTool := actool.Build(actool.Spec{
 		Name:        "set_goals",
-		Description: "提交拆分后的目标列表。",
+		Description: "Submit the list of decomposed objectives.",
 		Schema: map[string]any{"type": "object", "properties": map[string]any{
 			"goals": map[string]any{"type": "array", "items": map[string]any{
 				"type": "object", "properties": map[string]any{
-					"text":      map[string]any{"type": "string", "description": "一个独立可验证的目标"},
-					"vulnclass": map[string]any{"type": "string", "description": "对应漏洞类(若明确)，如 SQLi/IDOR；业务逻辑目标可留空"},
+					"text":      map[string]any{"type": "string", "description": "An independent, verifiable objective"},
+					"vulnclass": map[string]any{"type": "string", "description": "The corresponding vulnerability class (if clear), e.g. SQLi/IDOR; may be left empty for business-logic objectives"},
 				}, "required": []string{"text"},
 			}},
 		}, "required": []string{"goals"}},
@@ -79,9 +79,9 @@ func DecomposeGoals(ctx context.Context, c Config, goalText, desc string, emit f
 	// {{.EngagementDescription}} template var — else a prompt that references the var
 	// would inject the description twice. System prompt stays pure static instructions.
 	sys := renderSystem("goals", goalsDefaultTmpl, GoalsVars{})
-	userMsg := "任务目标：\n" + goalText
+	userMsg := "Task objective:\n" + goalText
 	if d := strings.TrimSpace(desc); d != "" {
-		userMsg += "\n\n任务描述（背景信息，可能含靶标范围/flag 数量/交战说明；仅供参考，不要臆造其中未提及的内容）：\n" + d
+		userMsg += "\n\nTask description (background information, may include target scope / flag count / engagement notes; for reference only, do not fabricate content it does not mention):\n" + d
 	}
 	// Use captureRun so every LLM step is emitted as an activity record (visible in
 	// the plan tab under the round-0 marker). Falls back gracefully when emit is nil.
