@@ -74,7 +74,8 @@ export function priceFor(model: string | undefined | null): ModelPrice | null {
 export function costUSD(model: string | undefined | null, t: TokenBucket): number | null {
   const p = priceFor(model);
   if (!p) return null;
-  const freshInput = Math.max(0, t.input - t.cacheRead);
+  // canonical input INCLUDES both cacheRead and cacheWrite → fresh = input − both.
+  const freshInput = Math.max(0, t.input - t.cacheRead - t.cacheWrite);
   return (
     (freshInput * p.input +
       t.cacheRead * p.cacheRead +

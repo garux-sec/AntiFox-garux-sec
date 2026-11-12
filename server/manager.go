@@ -86,11 +86,50 @@ const (
 	settingWorkers          = "workers"
 	settingLLMPoolEnabled   = "llm_pool_enabled" // LLM 故障转移(轮询)总开关，默认关
 	settingGlobalProxy      = "global_proxy"     // 全局出口代理(http/https/socks5)：agent 目标流量作 MITM 上游出网；空=直连
+	settingCostLimitUSD     = "cost_limit_usd"   // per-task estimated-cost budget in USD; 0/unset = off (no auto-pause)
 	// defaultWebSearchBackend is used when web search is on but no backend was picked.
 	defaultWebSearchBackend = "ddgs"
 	// defaultWorkers is the concurrent work-agent count when the setting is unset.
 	defaultWorkers = 3
 )
+
+// CostLimitUSD returns the per-task estimated-cost budget in USD (0 = off). When
+// a running task's estimated LLM spend reaches this, the engine auto-pauses it.
+func (m *Manager) CostLimitUSD() float64 {
+	v, ok, err := m.pg.GetSetting(settingCostLimitUSD)
+	if err != nil || !ok {
+		return 0
+	}
+	f, err := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	if err != nil || f < 0 {
+		return 0
+	}
+	return f
+}
+
+// SetCostLimitUSD persists the per-task cost budget in USD. 0 disables it.
+// Negative values are rejected.
+func (m *Manager) SetCostLimitUSD(v float64) error {
+	if v < 0 {
+		return fmt.Errorf("cost_limit_usd must be >= 0")
+	}
+	return m.pg.SetSetting(settingCostLimitUSD, strconv.FormatFloat(v, 'f', -1, 64))
+}
+
+// ProfileModelFor resolves the model string a task runs on: its pinned profile's
+// model, or the globally active profile's model when the task pins none. Empty
+// string when neither can be resolved (no cost can then be priced).
+func (m *Manager) ProfileModelFor(profileID *int64) string {
+	if profileID != nil {
+		if p, err := m.pg.ProfileByID(*profileID); err == nil && p != nil {
+			return p.Model
+		}
+	}
+	if p, err := m.pg.ActiveProfile(); err == nil && p != nil {
+		return p.Model
+	}
+	return ""
+}
 
 // Workers returns the configured concurrent work-agent count (default 3). Read
 // per-task at engine.Run, so a change applies to tasks started afterwards.

@@ -1071,6 +1071,31 @@ export default function DashboardPage() {
                 {displayedCost.partial && <span className="text-[9px] text-amber-400">*</span>}
               </div>
               <div className="text-[9px] text-muted-foreground/70">{tr("dashboard.tokenConsumption.estCostHint")}</div>
+              {/* per-task cost budget (settings.cost_limit_usd) */}
+              {(settings?.cost_limit_usd ?? 0) > 0 && (() => {
+                const limit = settings!.cost_limit_usd!;
+                if (isTaskScoped && displayedCost.usd != null) {
+                  const pct = (displayedCost.usd / limit) * 100;
+                  const bar = pct >= 100 ? "#ef4444" : pct >= 80 ? "#f59e0b" : "#10b981";
+                  return (
+                    <div className="mt-3">
+                      <div className="mb-1 flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">{tr("dashboard.tokenConsumption.budget")}</span>
+                        <span className="font-mono font-semibold tabular-nums">{fmtUSD(displayedCost.usd)} / {fmtUSD(limit)}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${Math.min(100, pct)}%`, background: bar }} />
+                      </div>
+                      {pct >= 100 && <div className="mt-1 text-[9px] font-medium text-red-400">{tr("dashboard.tokenConsumption.budgetOver")}</div>}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="mt-2 text-[10px] text-muted-foreground">
+                    {tr("dashboard.tokenConsumption.budgetPerTask", { amount: fmtUSD(limit) })}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Per-type bars */}

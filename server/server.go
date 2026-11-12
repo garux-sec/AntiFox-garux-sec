@@ -1833,6 +1833,7 @@ func (s *Server) settingsPayload() map[string]any {
 		"global_proxy":        s.m.GlobalProxy(),           // 全局出口代理：agent 目标流量经它出网(作 MITM 上游)，空=直连
 		"python_interpreter":  strings.TrimSpace(pyStored), // 用户/自动设的值(空=用运行时检测)
 		"workers":             s.m.Workers(),               // 并发工作 agent 数(默认3)；对之后启动的任务生效
+		"cost_limit_usd":      s.m.CostLimitUSD(),          // per-task est-cost budget in USD (0=off); task auto-pauses when reached
 	}
 }
 
@@ -1864,8 +1865,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		TavilyKey        *string `json:"tavily_search_api_key"`
 		WebSearchProxy   *string `json:"web_search_proxy"`   // 独立出口代理(http/https/socks5)；null=不改，""=清空
 		GlobalProxy      *string `json:"global_proxy"`       // 全局出口代理(http/https/socks5)；null=不改，""=清空(直连)
-		PythonInterp     *string `json:"python_interpreter"` // 自定义脚本工具的 python 解释器路径
-		Workers          *int    `json:"workers"`            // 并发工作 agent 数(>0)；对之后启动的任务生效
+		PythonInterp     *string  `json:"python_interpreter"` // 自定义脚本工具的 python 解释器路径
+		Workers          *int     `json:"workers"`            // 并发工作 agent 数(>0)；对之后启动的任务生效
+		CostLimitUSD     *float64 `json:"cost_limit_usd"`     // per-task est-cost budget USD (>=0, 0=off)
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, 400, err.Error())
@@ -1873,6 +1875,12 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Workers != nil {
 		if err := s.m.SetWorkers(*req.Workers); err != nil {
+			writeErr(w, 400, err.Error())
+			return
+		}
+	}
+	if req.CostLimitUSD != nil {
+		if err := s.m.SetCostLimitUSD(*req.CostLimitUSD); err != nil {
 			writeErr(w, 400, err.Error())
 			return
 		}

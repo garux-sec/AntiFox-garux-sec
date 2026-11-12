@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { CpuIcon, RadioTowerIcon, SearchIcon } from "lucide-react";
+import { CpuIcon, DollarSignIcon, RadioTowerIcon, SearchIcon } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -35,6 +35,8 @@ export default function SystemSettingsPage() {
   const [pyInterp, setPyInterp] = React.useState("");
   const [workers, setWorkers] = React.useState("3");
   const [savingWorkers, setSavingWorkers] = React.useState(false);
+  const [costLimit, setCostLimit] = React.useState("0");
+  const [savingCost, setSavingCost] = React.useState(false);
   const [globalProxy, setGlobalProxy] = React.useState("");
   const [savingGlobalProxy, setSavingGlobalProxy] = React.useState(false);
   const [testingGlobalProxy, setTestingGlobalProxy] = React.useState(false);
@@ -49,6 +51,7 @@ export default function SystemSettingsPage() {
     setGlobalProxy(s.global_proxy || "");
     setPyInterp(s.python_interpreter || "");
     setWorkers(String(s.workers ?? 3));
+    setCostLimit(String(s.cost_limit_usd ?? 0));
   }, []);
 
   const saveGlobalProxy = () => {
@@ -90,6 +93,23 @@ export default function SystemSettingsPage() {
       })
       .catch((e) => toast.error(t("settings.saveFailed", { msg: (e as Error).message })))
       .finally(() => setSavingWorkers(false));
+  };
+
+  const saveCostLimit = () => {
+    const v = Number(costLimit);
+    if (!Number.isFinite(v) || v < 0) {
+      toast.error(t("settings.costLimit.errInvalid"));
+      return;
+    }
+    setSavingCost(true);
+    api
+      .setSettings({ cost_limit_usd: v })
+      .then((s) => {
+        apply(s);
+        toast.success(t("settings.costLimit.saved"));
+      })
+      .catch((e) => toast.error(t("settings.saveFailed", { msg: (e as Error).message })))
+      .finally(() => setSavingCost(false));
   };
 
   const savePython = () => {
@@ -482,6 +502,37 @@ export default function SystemSettingsPage() {
               {t("common.save")}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl lg:max-w-none">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <DollarSignIcon className="size-4" />
+            {t("settings.costLimit.title")}
+          </CardTitle>
+          <CardDescription>
+            <Trans i18nKey="settings.costLimit.desc" components={{ b: <b /> }} />
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">$</span>
+            <Input
+              type="number"
+              min={0}
+              step="0.01"
+              className="w-32 font-mono text-sm"
+              placeholder="0"
+              value={costLimit}
+              disabled={!loaded || savingCost}
+              onChange={(e) => setCostLimit(e.target.value)}
+            />
+            <Button onClick={saveCostLimit} disabled={!loaded || savingCost}>
+              {t("common.save")}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("settings.costLimit.hint")}</p>
         </CardContent>
       </Card>
       </div>

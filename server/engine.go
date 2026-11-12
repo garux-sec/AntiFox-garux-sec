@@ -295,6 +295,69 @@ func (e *Engine) emitActivity(t *Task, r db.Activity) {
 	}
 	e.bc.Publish(t.ID, r)
 	e.touch(t.ID)
+	e.enforceCostBudget(t, r)
+}
+
+// enforceCostBudget auto-pauses a task once its estimated LLM spend reaches the
+// per-task cost budget (settings.cost_limit_usd; 0 = off). It is driven off the
+// token-bearing activities emitActivity already persists: "result" rows (one per
+// finished agent step, summed as the completed cost) plus the live "usage" row
+// the harness emits every turn (the in-flight step's running cost), so a long
+// step is caught at turn granularity rather than only when it ends. The check is
+// a cooperative stop — Pause cancels the task's exec context, which the harness
+// loop observes at its next turn boundary — so spend may overshoot the limit by
+// roughly one turn (and, under concurrent workers, by the siblings still in
+// flight). Cost is an estimate from the built-in price table; an unpriced model
+// (empty/unknown) never triggers a pause.
+func (e *Engine) enforceCostBudget(t *Task, r db.Activity) {
+	if r.Kind != "usage" && r.Kind != "result" {
+		return
+	}
+	limit := e.m.CostLimitUSD()
+	if limit <= 0 || e.IsPaused(t.ID) {
+		return
+	}
+	model := e.m.ProfileModelFor(t.LLMProfileID)
+	if model == "" {
+		return
+	}
+	// completed steps: SUM over the task's terminal (kind='result') rows.
+	done, err := t.Store.TokenTotal()
+	if err != nil {
+		return
+	}
+	total := llm.CostUSD(model, done.InputTokens, done.OutputTokens, done.CacheReadTokens, done.CacheWriteTokens)
+	// in-flight step: the live cumulative usage on this very "usage" row (result
+	// rows are already in the SUM above, so only add for "usage").
+	if r.Kind == "usage" && r.InputTokens != nil {
+		total += llm.CostUSD(model, deref(r.InputTokens), deref(r.OutputTokens), deref(r.CacheReadTokens), deref(r.CacheWriteTokens))
+	}
+	if total < limit {
+		return
+	}
+	log.Printf("[budget] task %s est. cost $%.4f reached $%.2f budget (model=%s) — auto-pausing", t.ID, total, limit, model)
+	e.Pause(t.ID)
+	if err := e.m.SetTaskPaused(t.ID, true); err != nil {
+		log.Printf("[budget] task %s SetTaskPaused failed: %v", t.ID, err)
+	}
+	// surface the reason in the activity log as a round-boundary marker (rendered
+	// as a labeled separator). Appended directly, not via emitActivity, so it does
+	// not re-enter this budget check.
+	note := db.Activity{Worker: "system", Kind: "round",
+		Summary: fmt.Sprintf("⏸ Auto-paused — estimated cost $%.2f reached the $%.2f budget", total, limit)}
+	if nid, aerr := e.appendActivity(t, note); aerr == nil {
+		note.ID = nid
+		note.CreatedAt = time.Now()
+		e.bc.Publish(t.ID, note)
+	}
+}
+
+// deref returns the int a pointer holds, or 0 when nil.
+func deref(p *int) int {
+	if p == nil {
+		return 0
+	}
+	return *p
 }
 
 // appendActivity persists one activity row, retrying briefly on write failure.
