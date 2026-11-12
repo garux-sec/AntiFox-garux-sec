@@ -327,7 +327,7 @@ func (s *Server) runConversationSync(c *db.Conversation, msg, busyKey string) {
 	// step, so skip the raw-error entry — only surface genuine failures.
 	if _, err := ca.Chat(ctx, c.AgentKey, sessionID, msg, maxTurns, maxDuration, webSearch, emit, onLive); err != nil && ctx.Err() == nil {
 		_, _ = pg.AppendConvActivity(c.ID, db.Activity{Worker: c.AgentKey, Kind: "text", IsError: true,
-			Summary: "（出错：" + err.Error() + "）", Detail: err.Error()})
+			Summary: "(Error: " + err.Error() + ")", Detail: err.Error()})
 	}
 	_ = pg.TouchConversation(c.ID)
 }

@@ -92,10 +92,10 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 		if err != nil {
 			flush()
 			if ctx.Err() != nil { // ctx cancelled = manual stop, not a failure
-				rec(db.Activity{Kind: "result", Summary: "（已手动停止本次运行）"})
+				rec(db.Activity{Kind: "result", Summary: "(Manually stopped this run)"})
 				return finalText, reason, ctx.Err()
 			}
-			rec(db.Activity{Kind: "result", IsError: true, Summary: "执行出错: " + err.Error(), Detail: err.Error()})
+			rec(db.Activity{Kind: "result", IsError: true, Summary: "Execution error: " + err.Error(), Detail: err.Error()})
 			return finalText, reason, err
 		}
 		switch ev.Kind {
