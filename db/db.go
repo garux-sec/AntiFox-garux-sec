@@ -132,27 +132,27 @@ func intp(v int) *int { return &v }
 // 注：planner/worker/mainagent/auto 的交互式 shell 默认由下方 interactive_shell_default_v1
 // 块统一置 true（尊重后续 toggle）；这里的 interactiveShell 只给需要「建行即默认开」的新 agent。
 var builtinAgents = []builtinAgent{
-	{"goals", "目标拆解", "goals", "把渗透任务目标拆解成若干独立、可验证的子目标。", []promptVar{
-		{"EngagementDescription", "任务描述（测试对象/背景）", "测试 example.com 站点", "exploration"},
-		{"Now", "服务端当前时间(RFC3339)", "2026-06-25T00:00:00Z", "runtime"},
+	{"goals", "Goal Decomposer", "goals", "Decomposes the pentest task objective into several independent, verifiable sub-goals.", []promptVar{
+		{"EngagementDescription", "Task description (target/background)", "Test the example.com site", "exploration"},
+		{"Now", "Server current time (RFC3339)", "2026-06-25T00:00:00Z", "runtime"},
 	}, false, nil},
-	{"planner", "规划", "planner", "读取态势、判定目标，只在确有未覆盖的新方向时补充探索意图（每任务一个规划循环）。", []promptVar{
-		{"Goal", "任务总目标", "拿下 example.com 的管理员权限", "exploration"},
-		{"AssetSummary", "资产计数/类型分布摘要(可选)", "domain:3 ip:5 site:2", "distilled"},
+	{"planner", "Planner", "planner", "Reads the situation and judges goals; adds exploration intents only when there is a genuinely uncovered new direction (one planning loop per task).", []promptVar{
+		{"Goal", "Overall task objective", "Gain admin access to example.com", "exploration"},
+		{"AssetSummary", "Asset count / type-distribution summary (optional)", "domain:3 ip:5 site:2", "distilled"},
 	}, false, nil},
-	{"mainagent", "主", "main", "人机接口：观察进展，把人的意图落成 hint 或高优先级意图。", []promptVar{
-		{"Goal", "当前任务目标", "拿下 example.com 的管理员权限", "exploration"},
-		{"AssetSummary", "开局态势摘要(可选)", "domain:3 ip:5", "distilled"},
-		{"FindingsSummary", "已确认漏洞摘要(可选)", "high:1 medium:2", "distilled"},
+	{"mainagent", "Main Agent", "main", "Human interface: observes progress and turns the operator's intent into hints or high-priority intents.", []promptVar{
+		{"Goal", "Current task objective", "Gain admin access to example.com", "exploration"},
+		{"AssetSummary", "Opening situation summary (optional)", "domain:3 ip:5", "distilled"},
+		{"FindingsSummary", "Confirmed-findings summary (optional)", "high:1 medium:2", "distilled"},
 	}, false, nil},
-	{"worker", "执行", "worker", "领取一条意图执行，把发现的事实/漏洞写回知识图谱后停止。", []promptVar{
-		{"ProxyAddr", "记录代理地址(驱动 if 双文案)", "127.0.0.1:8080", "runtime"},
-		{"WorkerName", "worker 自我标识(可选)", "worker-1", "runtime"},
-	}, false, intp(1200)}, // worker 单轮墙钟默认 1200s（硬目标/慢网常超 600s；参考 AntiFox 0.3.3）
-	// Auto:内置「平台操作」agent。不参与渗透编排循环,经对话页驱动,用工具操作平台。
-	{"auto", "Auto", "assistant", "平台操作助手：用工具管理任务(建/看/暂停/给提示)与资产，并可创建/修改 skill、自定义工具、MCP。", nil, false, nil},
-	// 渗透测试:内置「独立渗透」agent。经对话页驱动,一人从侦察到收尾走完整条渗透链,自己规划自己执行自己验证。默认开启交互式 shell。
-	{"pentest", "渗透测试", "assistant", "独立渗透 agent：一人从侦察→找攻击面→深入利用→验证→收尾走完整条链，自己规划、自己执行、自己对抗式验证。", nil, true, intp(0)},
+	{"worker", "Worker", "worker", "Claims one intent, executes it, writes the discovered facts/findings back to the knowledge graph, then stops.", []promptVar{
+		{"ProxyAddr", "Recording proxy address (drives the if/else wording)", "127.0.0.1:8080", "runtime"},
+		{"WorkerName", "Worker self-identifier (optional)", "worker-1", "runtime"},
+	}, false, intp(1200)}, // worker per-run wall-clock default 1200s (hard targets / slow networks often exceed 600s; cf. AntiFox 0.3.3)
+	// Auto: built-in "platform operations" agent. Does not join the pentest orchestration loop; driven via the chat page, operates the platform with tools.
+	{"auto", "Auto", "assistant", "Platform operations assistant: manages tasks (create/view/pause/hint) and assets with tools, and can create/modify skills, custom tools, and MCP.", nil, false, nil},
+	// pentest: built-in "standalone pentest" agent. Driven via the chat page; runs the full pentest chain alone from recon to wrap-up, planning/executing/verifying on its own. Interactive shell on by default.
+	{"pentest", "Pentest", "assistant", "Standalone pentest agent: runs the full chain alone — recon → attack surface → deep exploitation → verification → wrap-up — planning, executing, and adversarially verifying on its own.", nil, true, intp(0)},
 }
 
 // seedBuiltins inserts the fixed built-in agents and their variable catalog (idempotent).
