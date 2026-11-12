@@ -7,10 +7,62 @@ import (
 	"io"
 	"iter"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 )
 
-type openaiProvider struct{ cfg Config }
+// maxTokensLimitRe extracts a model's hard output cap from the provider's 400
+// error, e.g. "max_tokens is too large: 32768. This model supports at most
+// 16384 completion tokens…". When the requested cap exceeds a model's limit the
+// Stream loop retries once with this value instead of failing the turn.
+var maxTokensLimitRe = regexp.MustCompile(`supports at most (\d+)`)
+
+func parseMaxTokensLimit(msg string) (int, bool) {
+	m := maxTokensLimitRe.FindStringSubmatch(msg)
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[1])
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+type openaiProvider struct {
+	cfg Config
+	// maxCap is the model's hard output-token cap, learned from a 400 error and
+	// then applied to every later request so the too-large cap is only rejected
+	// once (not on every call). 0 = not yet learned. Guarded by capMu since the
+	// provider instance is shared across the planner + concurrent workers.
+	capMu  sync.Mutex
+	maxCap int
+}
+
+// clampMaxTokens lowers a requested output cap to the learned per-model limit
+// (if any). A 0 request means "omit max_tokens" and is left untouched.
+func (p *openaiProvider) clampMaxTokens(mt int) int {
+	p.capMu.Lock()
+	defer p.capMu.Unlock()
+	if p.maxCap > 0 && mt > p.maxCap {
+		return p.maxCap
+	}
+	return mt
+}
+
+// learnMaxCap records a model's reported output cap, returning true when it is
+// newly learned (or lower than a prior value) so the caller retries once.
+func (p *openaiProvider) learnMaxCap(n int) bool {
+	p.capMu.Lock()
+	defer p.capMu.Unlock()
+	if p.maxCap == 0 || n < p.maxCap {
+		p.maxCap = n
+		return true
+	}
+	return false
+}
 
 type oaMessage struct {
 	Role             string       `json:"role"`
@@ -171,11 +223,12 @@ func (p *openaiProvider) buildBody(req CompletionRequest, stream bool) ([]byte, 
 	// max_completion_tokens; they also only accept the default temperature.
 	// Older models and most OpenAI-compatible gateways still use max_tokens, so
 	// switch by model id rather than changing it globally.
+	mt := p.clampMaxTokens(req.MaxTokens)
 	if usesMaxCompletionTokens(p.cfg.Model) {
-		body.MaxCompletionTokens = req.MaxTokens
+		body.MaxCompletionTokens = mt
 		body.Temperature = nil
 	} else {
-		body.MaxTokens = req.MaxTokens
+		body.MaxTokens = mt
 	}
 	// stream_options.include_usage is a streaming-only field; some gateways reject
 	// it on a non-streaming request, so send it only when streaming.
@@ -232,6 +285,15 @@ func (p *openaiProvider) Stream(ctx context.Context, req CompletionRequest) iter
 				r.Header.Set("accept", "text/event-stream")
 			}, "openai")
 			if err != nil {
+				// The requested max_tokens exceeds this model's hard output cap
+				// (e.g. gpt-4o-mini maxes at 16384). Learn the cap and retry once;
+				// buildBody then clamps this and every later request to it.
+				if n, ok := parseMaxTokensLimit(err.Error()); ok && p.learnMaxCap(n) {
+					if b, berr := p.buildBody(req, true); berr == nil {
+						body = b
+						continue
+					}
+				}
 				yield(StreamEvent{}, err)
 				return
 			}
@@ -325,6 +387,13 @@ func (p *openaiProvider) Complete(ctx context.Context, req CompletionRequest) (M
 			r.Header.Set("accept", "application/json")
 		}, "openai")
 		if err != nil {
+			// Learn + retry once at the model's reported output cap (see Stream).
+			if n, ok := parseMaxTokensLimit(err.Error()); ok && p.learnMaxCap(n) {
+				if b, berr := p.buildBody(req, false); berr == nil {
+					body = b
+					continue
+				}
+			}
 			return Message{}, "", Usage{}, err
 		}
 		raw, rerr := io.ReadAll(resp.Body)

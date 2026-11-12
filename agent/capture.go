@@ -149,13 +149,13 @@ func captureRunSession(ctx context.Context, s *agentcore.Session, input string, 
 						// interruption (task paused / worker killed / backend restart),
 						// not a real completion — the intent is re-queued (open) or
 						// stopped, so the session icon reflects that, not this run.
-						sum = "（运行被中断：任务暂停 / 终止 / 重启所致；未完成）"
+						sum = "(Run interrupted: task paused / killed / backend restart; not completed)"
 					case harness.ReasonTimeout, harness.ReasonMaxTurns:
 						// budget hit → settlement ran (facts/assets were written back);
 						// only the trailing text summary is missing, not a failure.
-						sum = "（达运行预算上限，已收尾写回事实；本次无文字总结，终态: " + string(ev.Terminal.Reason) + "）"
+						sum = "(Run budget reached; wrapped up and wrote back facts; no text summary this run, final: " + string(ev.Terminal.Reason) + ")"
 					default:
-						sum = "（无总结，终态: " + string(ev.Terminal.Reason) + "）"
+						sum = "(No summary, final: " + string(ev.Terminal.Reason) + ")"
 					}
 				}
 				u := ev.Terminal.Usage // cumulative token usage for this session
