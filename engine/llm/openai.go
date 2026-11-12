@@ -48,6 +48,7 @@ type oaReq struct {
 	Messages        []oaMessage   `json:"messages"`
 	Tools           []oaTool      `json:"tools,omitempty"`
 	MaxTokens       int           `json:"max_tokens,omitempty"`
+	MaxCompletionTokens int       `json:"max_completion_tokens,omitempty"`
 	Temperature     *float64      `json:"temperature,omitempty"`
 	Stop            []string      `json:"stop,omitempty"`
 	Thinking        *oaThinking   `json:"thinking,omitempty"`
@@ -141,14 +142,40 @@ func flattenText(blocks []ContentBlock) string {
 	return s.String()
 }
 
+// usesMaxCompletionTokens reports whether an OpenAI model requires the newer
+// max_completion_tokens field (and rejects max_tokens and a non-default
+// temperature) on the Chat Completions API — true for the o-series reasoning
+// models (o1/o3/o4) and the GPT-5 family. A gateway prefix like "openai/" is
+// stripped before matching.
+func usesMaxCompletionTokens(model string) bool {
+	m := strings.ToLower(strings.TrimSpace(model))
+	if i := strings.LastIndex(m, "/"); i >= 0 {
+		m = m[i+1:]
+	}
+	return strings.HasPrefix(m, "gpt-5") ||
+		strings.HasPrefix(m, "o1") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4")
+}
+
 func (p *openaiProvider) buildBody(req CompletionRequest, stream bool) ([]byte, error) {
 	body := oaReq{
 		Model:       p.cfg.Model,
 		Messages:    toOpenAIMessages(joinSystem(req.System), req.Messages),
-		MaxTokens:   req.MaxTokens,
 		Temperature: req.Temperature,
 		Stop:        req.Stop,
 		Stream:      stream,
+	}
+	// Newer OpenAI models (the o-series reasoning models and the GPT-5 family)
+	// reject the legacy max_tokens field on Chat Completions and require
+	// max_completion_tokens; they also only accept the default temperature.
+	// Older models and most OpenAI-compatible gateways still use max_tokens, so
+	// switch by model id rather than changing it globally.
+	if usesMaxCompletionTokens(p.cfg.Model) {
+		body.MaxCompletionTokens = req.MaxTokens
+		body.Temperature = nil
+	} else {
+		body.MaxTokens = req.MaxTokens
 	}
 	// stream_options.include_usage is a streaming-only field; some gateways reject
 	// it on a non-streaming request, so send it only when streaming.
