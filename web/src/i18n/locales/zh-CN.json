@@ -48,7 +48,8 @@
     "logs": "日志",
     "settings": "系统配置",
     "reports": "报告管理",
-    "knowledge": "知识库"
+    "knowledge": "知识库",
+    "attack-surface": "攻击面"
   },
   "knowledge": {
     "title": "知识库",
@@ -216,7 +217,8 @@
       "view": "查看最近 Todo",
       "recent": "最近 Todo",
       "empty": "（空）"
-    }
+    },
+    "refresh": "刷新"
   },
   "login": {
     "title": "登录",
@@ -1972,5 +1974,11 @@
     "format": "报告格式",
     "formatDocx": "Word 文档 (.docx)",
     "formatMd": "Markdown 交付包 (.zip：md+截图)"
+  },
+  "attackSurface": {
+    "title": "攻击面",
+    "subtitle": "侦察发现的资产，按可达路径连成图。红圈=疑似入口点(暴露的凭据/服务)。",
+    "empty": "暂无资产。先运行侦察(通过 agent 调 crt.sh / DNS / Shodan / GitHub)来填充攻击面。",
+    "entryPoints": "{{count}} 个入口点"
   }
 }

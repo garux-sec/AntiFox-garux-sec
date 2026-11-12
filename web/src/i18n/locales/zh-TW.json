@@ -48,7 +48,8 @@
     "logs": "日誌",
     "settings": "系統配置",
     "reports": "報告管理",
-    "knowledge": "知識庫"
+    "knowledge": "知識庫",
+    "attack-surface": "攻擊面"
   },
   "knowledge": {
     "title": "知識庫",
@@ -216,7 +217,8 @@
       "view": "檢視最近 Todo",
       "recent": "最近 Todo",
       "empty": "（空）"
-    }
+    },
+    "refresh": "重新整理"
   },
   "login": {
     "title": "登入",
@@ -1972,5 +1974,11 @@
     "format": "報告格式",
     "formatDocx": "Word 文件 (.docx)",
     "formatMd": "Markdown 交付包 (.zip：md+截圖)"
+  },
+  "attackSurface": {
+    "title": "攻擊面",
+    "subtitle": "偵察發現的資產，依可達路徑連成圖。紅圈=疑似入口點(暴露的憑證/服務)。",
+    "empty": "暫無資產。先執行偵察(透過 agent 呼叫 crt.sh / DNS / Shodan / GitHub)來填充攻擊面。",
+    "entryPoints": "{{count}} 個入口點"
   }
 }

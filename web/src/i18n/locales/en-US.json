@@ -48,7 +48,8 @@
     "logs": "Logs",
     "settings": "Settings",
     "reports": "Reports",
-    "knowledge": "Knowledge"
+    "knowledge": "Knowledge",
+    "attack-surface": "Attack Surface"
   },
   "knowledge": {
     "title": "Knowledge Base",
@@ -216,7 +217,8 @@
       "view": "View recent Todo",
       "recent": "Recent Todo",
       "empty": "(empty)"
-    }
+    },
+    "refresh": "Refresh"
   },
   "login": {
     "title": "Sign In",
@@ -1972,5 +1974,11 @@
     "format": "Format",
     "formatDocx": "Word (.docx)",
     "formatMd": "Markdown bundle (.zip: md+images)"
+  },
+  "attackSurface": {
+    "title": "Attack Surface",
+    "subtitle": "Assets discovered by recon, linked into reachability paths. Red ring = likely entry point (exposed credentials/service).",
+    "empty": "No assets yet. Run recon (crt.sh / DNS / Shodan / GitHub via the agent) to populate the attack surface.",
+    "entryPoints": "{{count}} entry point(s)"
   }
 }
