@@ -41,7 +41,7 @@ func (s *Server) hostTools() ([]actool.CoreTool, map[string][]string) {
 	tools = append(tools, s.platformTools()...) // 平台操作工具(建改 skill/工具/MCP，给 Auto 用)
 	custom, err := s.customTools()
 	if err != nil {
-		log.Printf("[custom-tool] 加载失败: %v", err)
+		log.Printf("[custom-tool] load failed: %v", err)
 		return tools, nil
 	}
 	tools = append(tools, custom...)
@@ -439,7 +439,7 @@ func (s *Server) refreshBuiltinToolSchemas() {
 		}
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
-	log.Printf("[tools] 已刷新 orchestration/platform 工具 schema 到代码默认(一次性)")
+	log.Printf("[tools] refreshed orchestration/platform tool schema to code defaults (one-time)")
 }
 
 // seedAutoReportFindingBinding adds "auto" to report_finding's binding ONCE so
@@ -450,7 +450,7 @@ func (s *Server) seedAutoReportFindingBinding() {
 		return
 	}
 	if err := s.m.pg.AddAgentToToolBinding("auto", []string{"report_finding"}); err != nil {
-		log.Printf("[auto] report_finding 默认绑定失败: %v", err)
+		log.Printf("[auto] report_finding default binding failed: %v", err)
 		return
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
@@ -466,7 +466,7 @@ func (s *Server) seedPlannerDefaultBindings() {
 		return
 	}
 	if err := s.m.pg.AddAgentToToolBinding("planner", []string{"report_finding"}); err != nil {
-		log.Printf("[planner] report_finding 默认绑定失败: %v", err)
+		log.Printf("[planner] report_finding default binding failed: %v", err)
 		return
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
@@ -484,11 +484,11 @@ func (s *Server) seedMainagentReportFindingBinding() {
 		return
 	}
 	if err := s.m.pg.AddAgentToToolBinding("mainagent", []string{"report_finding"}); err != nil {
-		log.Printf("[mainagent] report_finding 默认绑定失败: %v", err)
+		log.Printf("[mainagent] report_finding default binding failed: %v", err)
 		return
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
-	log.Printf("[mainagent] 已默认绑定 report_finding（主 Agent 现可记录漏洞）")
+	log.Printf("[mainagent] report_finding bound by default (main agent can now record vulnerabilities)")
 }
 
 // bumpWorkerRunSecondsTo1200 raises the worker single-run wall-clock from the old
@@ -503,10 +503,10 @@ func (s *Server) bumpWorkerRunSecondsTo1200() {
 	}
 	if a, err := s.m.pg.GetAgentByKey("worker"); err == nil && a != nil && a.RunSecs == 600 {
 		if err := s.m.pg.SetAgentRunSeconds("worker", 1200); err != nil {
-			log.Printf("[worker] run_seconds 1200 迁移失败: %v", err)
+			log.Printf("[worker] run_seconds 1200 migration failed: %v", err)
 			return
 		}
-		log.Printf("[worker] 单轮墙钟默认 600→1200s")
+		log.Printf("[worker] single-run wall-clock default 600→1200s")
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
 }
@@ -535,11 +535,11 @@ func (s *Server) reseedAgentPrompt(key, flag, note string) {
 		return
 	}
 	if _, err := s.m.pg.SavePrompt(a.ID, tmpl, "系统更新："+note, "system"); err != nil {
-		log.Printf("[%s] prompt 重播失败: %v", key, err)
+		log.Printf("[%s] prompt replay failed: %v", key, err)
 		return
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
-	log.Printf("[%s] 已更新提示词（%s）", key, note)
+	log.Printf("[%s] prompt updated (%s)", key, note)
 }
 
 // refreshReportFindingSchema pushes report_finding's CODE schema to the DB tools table
@@ -562,7 +562,7 @@ func (s *Server) refreshReportFindingSchema() {
 		}
 	}
 	_ = s.m.pg.SetSetting(flag, "true")
-	log.Printf("[tools] 已刷新 report_finding schema（新增 reproduction 结构化复现过程参数）")
+	log.Printf("[tools] refreshed report_finding schema (added structured reproduction parameter)")
 }
 
 // seedAutoDefaultBindings adds "auto" to the task-op + platform tools' bindings
@@ -582,7 +582,7 @@ func (s *Server) seedAutoDefaultBindings() {
 	// 资产工具：Auto 操作平台常要看/登记资产、管理公司范围。
 	keys = append(keys, "insert_assets", "add_company_scope", "list_assets")
 	if err := s.m.pg.AddAgentToToolBinding("auto", keys); err != nil {
-		log.Printf("[auto] 默认绑定失败: %v", err)
+		log.Printf("[auto] default binding failed: %v", err)
 		return
 	}
 	_ = s.m.pg.SetSetting(flag, "true")

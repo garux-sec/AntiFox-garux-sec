@@ -65,7 +65,7 @@ func loadOrCreateJWTKey(dataDir string) ([]byte, error) {
 	if err := os.WriteFile(path, buf, 0600); err != nil {
 		return nil, fmt.Errorf("write jwt key: %w", err)
 	}
-	log.Printf("[auth] 新 JWT key 已写入 %s", path)
+	log.Printf("[auth] new JWT key written to %s", path)
 	return buf, nil
 }
 
@@ -183,13 +183,13 @@ func (s *Server) bootstrapRBAC() {
 	}
 	legacyHash, _, _ := s.m.pg.GetSetting(authPassKey)
 	if err := s.m.pg.BootstrapRBAC(legacyHash); err != nil {
-		log.Printf("[rbac] bootstrap 失败: %v", err)
+		log.Printf("[rbac] bootstrap failed: %v", err)
 		return
 	}
 	if strings.TrimSpace(legacyHash) != "" {
-		log.Printf("[rbac] 多用户权限就绪（已迁移旧密码为内置 admin）")
+		log.Printf("[rbac] multi-user permissions ready (migrated legacy password to built-in admin)")
 	} else {
-		log.Printf("[rbac] 多用户权限就绪")
+		log.Printf("[rbac] multi-user permissions ready")
 	}
 }
 
@@ -347,14 +347,14 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		s.registerLoginFailure(pg, ip, uname)
 		pg.RecordAudit(uname, "auth", "login_failed", "fail", ip, reason, nil)
-		log.Printf("[auth] 登录失败 用户=%q ip=%s 原因=%s", uname, ip, reason)
+		log.Printf("[auth] login failed user=%q ip=%s reason=%s", uname, ip, reason)
 		writeErr(w, 401, reason)
 		return
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); err != nil {
 		s.registerLoginFailure(pg, ip, u.Username)
 		pg.RecordAudit(u.Username, "auth", "login_failed", "fail", ip, "密码错误", nil)
-		log.Printf("[auth] 登录失败 用户=%q ip=%s 原因=密码错误", u.Username, ip)
+		log.Printf("[auth] login failed user=%q ip=%s reason=wrong password", u.Username, ip)
 		writeErr(w, 401, "用户名或密码错误")
 		return
 	}
@@ -365,7 +365,7 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	s.loginLimiter.reset(ip, u.Username) // 成功登录清零该 IP+账号的失败计数
 	pg.RecordAudit(u.Username, "auth", "login", "success", ip, "登录成功", nil)
-	log.Printf("[auth] 登录成功 用户=%q ip=%s", u.Username, ip)
+	log.Printf("[auth] login succeeded user=%q ip=%s", u.Username, ip)
 	writeJSON(w, 200, map[string]any{"token": tok})
 }
 
@@ -373,7 +373,7 @@ func (s *Server) authLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) registerLoginFailure(pg *db.DB, ip, username string) {
 	if s.loginLimiter.fail(ip, username, s.loginPolicy()) {
 		pg.RecordAudit(username, "auth", "login_locked", "fail", ip, "失败次数超阈值，已临时锁定", nil)
-		log.Printf("[auth] 暴力破解锁定 用户=%q ip=%s", username, ip)
+		log.Printf("[auth] brute-force lockout user=%q ip=%s", username, ip)
 	}
 }
 

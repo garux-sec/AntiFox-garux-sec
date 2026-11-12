@@ -52,3 +52,4 @@ server/skillsdist/
 
 # claude 会话导出（临时，不提交）
 *-this-session-is-being-continued-*.txt
+dist/

@@ -234,7 +234,7 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string) *Serv
 		// clear stale 'running' intents from a prior crash/restart (no live worker
 		// owns them) so they re-claim instead of spinning forever in the UI.
 		if n, _ := t.Store.ResetRunningIntents(); n > 0 {
-			log.Printf("[engine] task %s 重置 %d 个残留 running 意图为 open", t.ID, n)
+			log.Printf("[engine] task %s reset %d stale running intents to open", t.ID, n)
 		}
 		if t.Paused {
 			s.engine.Pause(t.ID)
@@ -983,7 +983,7 @@ func (s *Server) editTask(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	log.Printf("[task] #%s 已编辑", t.ID)
+	log.Printf("[task] #%s edited", t.ID)
 	writeJSON(w, 200, map[string]any{"id": t.ID, "ok": true})
 }
 
@@ -1013,7 +1013,7 @@ func (s *Server) control(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.engine.Rerun(s.ctx, t)
-		log.Printf("[task] #%s 继续运行(重跑)", t.ID)
+		log.Printf("[task] #%s resumed (rerun)", t.ID)
 		writeJSON(w, 200, map[string]any{"id": t.ID, "paused": false, "status": "running"})
 		return
 	default:
@@ -1025,7 +1025,7 @@ func (s *Server) control(w http.ResponseWriter, r *http.Request) {
 	if err := s.m.SetTaskPaused(t.ID, paused); err != nil { // persist (survives restart)
 		log.Printf("[control] persist paused %s: %v", t.ID, err)
 	}
-	log.Printf("[task] #%s %s", t.ID, map[bool]string{true: "已暂停", false: "已恢复"}[paused])
+	log.Printf("[task] #%s %s", t.ID, map[bool]string{true: "paused", false: "resumed"}[paused])
 	writeJSON(w, 200, map[string]any{"id": t.ID, "paused": paused})
 }
 
@@ -1168,7 +1168,7 @@ func (s *Server) createTask(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	log.Printf("[task] 新建任务 #%s «%s» 目标: %s", t.ID, req.Description, req.Goal)
+	log.Printf("[task] new task #%s «%s» goal: %s", t.ID, req.Description, req.Goal)
 	// seed initial asset(s) from goal/description so the event-driven loop has a root.
 	s.seed(t, req.Description+" "+req.Goal)
 	// Return immediately — goal decomposition is async so the UI isn't blocked.
@@ -1263,13 +1263,13 @@ func (s *Server) llmHost() string {
 func (s *Server) seed(t *Task, text string) {
 	scheme, host, port, ok := parseTarget(text)
 	if !ok {
-		log.Printf("[seed] task %s: 未能从 %q 解析出目标 host/IP，不创建站点（请手动配置 scope）", t.ID, text)
+		log.Printf("[seed] task %s: could not parse target host/IP from %q, not creating site (please configure scope manually)", t.ID, text)
 		t.Notify()
 		return
 	}
 	// P0-1 guard: never treat the configured LLM gateway as a target.
 	if gw := s.llmHost(); gw != "" && host == gw {
-		log.Printf("[seed] task %s: 目标 %q 是 LLM 网关，拒绝作为渗透目标", t.ID, host)
+		log.Printf("[seed] task %s: target %q is the LLM gateway, refusing to use it as a pentest target", t.ID, host)
 		t.Notify()
 		return
 	}
@@ -1295,7 +1295,7 @@ func (s *Server) seed(t *Task, text string) {
 			_ = t.Store.Anchor(begin, rootID)
 		}
 	}
-	log.Printf("[seed] task %s: 目标站点 %s", t.ID, u)
+	log.Printf("[seed] task %s: target site %s", t.ID, u)
 	t.Notify()
 }
 

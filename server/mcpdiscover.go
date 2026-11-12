@@ -75,7 +75,7 @@ func (s *Server) discoverAndCacheMCP(ctx context.Context, m *db.MCPServer) error
 		return err
 	}
 	s.m.pg.SaveMCPHealth(m.ID, "ok", "")
-	log.Printf("[mcp] %s 发现 %d 个工具并已缓存", m.Name, len(tools))
+	log.Printf("[mcp] %s discovered %d tools and cached them", m.Name, len(tools))
 	return nil
 }
 
@@ -151,7 +151,7 @@ func (s *Server) mcpStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) discoverEmptyMCPsOnStartup() {
 	servers, err := s.m.pg.ListMCP()
 	if err != nil {
-		log.Printf("[mcp] 启动自动发现: 读取列表失败: %v", err)
+		log.Printf("[mcp] startup auto-discovery: failed to read list: %v", err)
 		return
 	}
 	for _, m := range servers {
@@ -160,7 +160,7 @@ func (s *Server) discoverEmptyMCPsOnStartup() {
 		}
 		ctx, cancel := context.WithTimeout(s.ctx, 90*time.Second)
 		if err := s.discoverAndCacheMCP(ctx, m); err != nil {
-			log.Printf("[mcp] 启动自动发现 %s 失败: %v", m.Name, err)
+			log.Printf("[mcp] startup auto-discovery of %s failed: %v", m.Name, err)
 		}
 		cancel()
 	}

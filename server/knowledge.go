@@ -20,7 +20,7 @@ func (s *Server) kb() *knowledge.Service { return knowledge.NewService(s.m.pg) }
 
 func (s *Server) indexKnowledgeAsync(id int64) {
 	if err := s.kb().IndexDoc(s.ctx, id); err != nil {
-		log.Printf("[knowledge] 索引文档 #%d 失败: %v", id, err)
+		log.Printf("[knowledge] failed to index document #%d: %v", id, err)
 	}
 }
 

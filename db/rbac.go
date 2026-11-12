@@ -159,10 +159,10 @@ func (d *DB) BootstrapRBAC(adminHash string) error {
 
 	// 系统角色
 	sysRoles := []RBACRole{
-		{ID: RBACRoleAdmin, Name: "管理员", Description: "全局管理权限", Scope: RBACScopeAll, IsSystem: true},
-		{ID: RBACRoleOperator, Name: "操作员", Description: "可执行日常安全工作流，不能管理账号与核心配置", Scope: RBACScopeAssigned, IsSystem: true},
-		{ID: RBACRoleAuditor, Name: "审计员", Description: "只读查看审计、监控与资产", Scope: RBACScopeAll, IsSystem: true},
-		{ID: RBACRoleViewer, Name: "只读用户", Description: "只读查看被授权资源", Scope: RBACScopeAssigned, IsSystem: true},
+		{ID: RBACRoleAdmin, Name: "Administrator", Description: "Global management privileges", Scope: RBACScopeAll, IsSystem: true},
+		{ID: RBACRoleOperator, Name: "Operator", Description: "Can run day-to-day security workflows, but cannot manage accounts or core configuration", Scope: RBACScopeAssigned, IsSystem: true},
+		{ID: RBACRoleAuditor, Name: "Auditor", Description: "Read-only access to audit, monitoring, and assets", Scope: RBACScopeAll, IsSystem: true},
+		{ID: RBACRoleViewer, Name: "Viewer", Description: "Read-only access to authorized resources", Scope: RBACScopeAssigned, IsSystem: true},
 	}
 	for _, r := range sysRoles {
 		if _, err := tx.Exec(`INSERT INTO rbac_roles(id,name,description,scope,is_system,created_at,updated_at)
@@ -213,7 +213,7 @@ func (d *DB) BootstrapRBAC(adminHash string) error {
 	if userCount == 0 && strings.TrimSpace(adminHash) != "" {
 		id := "admin"
 		if _, err := tx.Exec(`INSERT INTO rbac_users(id,username,display_name,password_hash,enabled,is_builtin,created_at,updated_at)
-			VALUES ($1,'admin','管理员',$2,true,true,$3,$3)`, id, adminHash, now); err != nil {
+			VALUES ($1,'admin','Administrator',$2,true,true,$3,$3)`, id, adminHash, now); err != nil {
 			return err
 		}
 		if _, err := tx.Exec(`INSERT INTO rbac_user_roles(user_id,role_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, id, RBACRoleAdmin); err != nil {

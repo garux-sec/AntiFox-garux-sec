@@ -42,13 +42,13 @@ func materializeEmbeddedSkills(skillDir string) {
 			continue // already present → keep (never clobber edits)
 		}
 		if err := writeEmbeddedSkill(root, name, skillDir); err != nil {
-			log.Printf("[skill] 物化 %s 失败: %v", name, err)
+			log.Printf("[skill] failed to materialize %s: %v", name, err)
 			continue
 		}
 		seeded++
 	}
 	if seeded > 0 {
-		log.Printf("[skill] 物化内置 skill %d 个 → %s", seeded, skillDir)
+		log.Printf("[skill] materialized %d built-in skills → %s", seeded, skillDir)
 	}
 }
 

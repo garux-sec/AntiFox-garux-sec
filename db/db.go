@@ -205,7 +205,7 @@ ON CONFLICT (name) DO NOTHING`,
 	// filesystem: read/write files during pentest (payloads, output, configs).
 	if _, err := d.Exec(`
 INSERT INTO mcp_servers(name, transport, command, args, env, enabled, description)
-VALUES ('filesystem', 'stdio', 'npx', $1, '{}', true, '读写本地文件系统——在渗透测试中存取载荷、脚本输出、发现的配置文件等')
+VALUES ('filesystem', 'stdio', 'npx', $1, '{}', true, 'Read and write the local filesystem — store and retrieve payloads, script output, discovered config files, etc. during penetration testing')
 ON CONFLICT (name) DO NOTHING`,
 		`["@modelcontextprotocol/server-filesystem","/tmp/antifox-fs"]`); err != nil {
 		return fmt.Errorf("seed filesystem mcp: %w", err)
@@ -216,7 +216,7 @@ ON CONFLICT (name) DO NOTHING`,
 	// deploy. Operator enables it after setting a token on the MCP page.
 	if _, err := d.Exec(`
 INSERT INTO mcp_servers(name, transport, command, args, env, enabled, description)
-VALUES ('github', 'stdio', 'npx', $1, $2, false, 'GitHub 仓库侦察——搜索公开代码库中可能泄露的凭据、密钥、敏感配置，或分析目标组织开源项目代码（需在 MCP 页填入 GITHUB_PERSONAL_ACCESS_TOKEN 后启用）')
+VALUES ('github', 'stdio', 'npx', $1, $2, false, 'GitHub repository recon — search public repositories for leaked credentials, keys, and sensitive configs, or analyze the open-source project code of a target organization (enable after entering GITHUB_PERSONAL_ACCESS_TOKEN on the MCP page)')
 ON CONFLICT (name) DO NOTHING`,
 		`["@modelcontextprotocol/server-github"]`, `{"GITHUB_PERSONAL_ACCESS_TOKEN":"<your-token>"}`); err != nil {
 		return fmt.Errorf("seed github mcp: %w", err)
@@ -244,8 +244,8 @@ ON CONFLICT (name) DO NOTHING`,
 // Records the outcome in the settings flag "knowledge.vector_available".
 func (d *DB) ensureKnowledgeVectorSchema() {
 	if _, err := d.Exec(`CREATE EXTENSION IF NOT EXISTS vector`); err != nil {
-		log.Printf("[knowledge] pgvector 不可用（%v）——语义检索禁用，降级为关键词检索。"+
-			"启用需超级用户执行一次 CREATE EXTENSION vector", err)
+		log.Printf("[knowledge] pgvector unavailable (%v) — semantic search disabled, falling back to keyword search. "+
+			"To enable, run CREATE EXTENSION vector once as a superuser", err)
 		_ = d.SetBool("knowledge.vector_available", false)
 		return
 	}
@@ -264,7 +264,7 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
 );
 CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_doc ON knowledge_chunks(doc_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_model ON knowledge_chunks(embed_model);`); err != nil {
-		log.Printf("[knowledge] 建 knowledge_chunks 失败（%v）——语义检索禁用", err)
+		log.Printf("[knowledge] failed to create knowledge_chunks (%v) — semantic search disabled", err)
 		_ = d.SetBool("knowledge.vector_available", false)
 		return
 	}
@@ -370,7 +370,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 	rules := []rule{
 		// ── 系统破坏性命令 (priority 100) ──────────────────────────────────
 		{
-			name:     "[内置] 递归强制删除 rm -rf",
+			name:     "[builtin] Recursive forced delete rm -rf",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\brm\b.{0,80}(?:-[a-z]*r[a-z]*f[a-z]*|-[a-z]*f[a-z]*r[a-z]*|--recursive|--no-preserve-root)`,
@@ -379,7 +379,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 删除系统关键目录",
+			name:     "[builtin] Delete critical system directories",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\brm\b[^"'\n]{0,60}["'\s](/|/etc|/bin|/usr|/boot|/var|/lib|/sys|/proc|/dev|/sbin|/root)`,
@@ -388,7 +388,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 磁盘格式化 mkfs",
+			name:     "[builtin] Disk format mkfs",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\bmkfs\b`,
@@ -397,7 +397,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 覆写磁盘设备 dd",
+			name:     "[builtin] Overwrite disk device dd",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\bdd\b[^|\n]{0,100}\bof=\s*/dev/[a-zA-Z]`,
@@ -406,7 +406,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] Fork 炸弹",
+			name:     "[builtin] Fork bomb",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `:\(\)\s*\{[^}]*:\|:`,
@@ -415,7 +415,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 关机 / 重启",
+			name:     "[builtin] Shutdown / reboot",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\b(?:shutdown|reboot|halt|poweroff|init\s+[06])\b`,
@@ -424,7 +424,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 杀死全部进程",
+			name:     "[builtin] Kill all processes",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\bkill\s+-9\s+-1\b|\bkillall\s+-9\b`,
@@ -433,7 +433,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 磁盘擦除 shred / wipe",
+			name:     "[builtin] Disk erase shred / wipe",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\b(?:shred|wipe)\b[^|\n]{0,80}/dev/[a-zA-Z]`,
@@ -442,7 +442,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 100,
 		},
 		{
-			name:     "[内置] 清空防火墙规则",
+			name:     "[builtin] Flush firewall rules",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `\biptables\s+(?:-F|--flush)\b|\bnft\s+flush\s+ruleset\b`,
@@ -452,7 +452,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 		},
 		// ── 数据库破坏性操作 (priority 90) ─────────────────────────────────
 		{
-			name:     "[内置] SQL DROP DATABASE / TABLE / SCHEMA",
+			name:     "[builtin] SQL DROP DATABASE / TABLE / SCHEMA",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\bDROP\s+(?:DATABASE|TABLE|SCHEMA|INDEX|VIEW|TABLESPACE|USER|ROLE)\b`,
@@ -461,7 +461,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 90,
 		},
 		{
-			name:     "[内置] SQL TRUNCATE",
+			name:     "[builtin] SQL TRUNCATE",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\bTRUNCATE\s+(?:TABLE\s+)?\w`,
@@ -470,7 +470,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 90,
 		},
 		{
-			name:     "[内置] MongoDB drop / dropDatabase",
+			name:     "[builtin] MongoDB drop / dropDatabase",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\.(?:dropDatabase|dropCollection|drop)\s*\(`,
@@ -479,7 +479,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 90,
 		},
 		{
-			name:     "[内置] Redis FLUSHALL / FLUSHDB",
+			name:     "[builtin] Redis FLUSHALL / FLUSHDB",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)\b(?:FLUSHALL|FLUSHDB)\b`,
@@ -493,7 +493,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 		//   2. Python HTTP 客户端 .delete() 方法
 		//   3. JS/通用脚本里的 method: 'DELETE' / method="DELETE"
 		{
-			name:    "[内置] curl / wget 发送 DELETE 请求",
+			name:    "[builtin] curl / wget sending DELETE request",
 			target:  "tool_input",
 			typ:     "regex",
 			pattern: `(?i)\bcurl\b[^|\n&;"]{0,300}(?:-X\s*DELETE|--request\s+DELETE|-XDELETE)|\bwget\b[^|\n&;"]{0,300}--method[=\s]+DELETE`,
@@ -502,7 +502,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 80,
 		},
 		{
-			name:    "[内置] Python HTTP 客户端 DELETE（requests/httpx/aiohttp）",
+			name:    "[builtin] Python HTTP client DELETE (requests/httpx/aiohttp)",
 			target:  "tool_input",
 			typ:     "regex",
 			pattern: `(?i)\b(?:requests|httpx|aiohttp|urllib\.request)\.delete\s*\(|session\.delete\s*\(|client\.delete\s*\(`,
@@ -511,7 +511,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 80,
 		},
 		{
-			name:    "[内置] 脚本中声明 HTTP DELETE 方法（JS/通用）",
+			name:    "[builtin] HTTP DELETE method declared in script (JS/generic)",
 			target:  "tool_input",
 			typ:     "regex",
 			pattern: `(?i)axios\.delete\s*\(|method\s*[:=]\s*['"]DELETE['"]`,
@@ -520,7 +520,7 @@ func (d *DB) seedDefaultInterceptRules() error {
 			priority: 80,
 		},
 		{
-			name:     "[内置] 批量清空 / 清除接口路径",
+			name:     "[builtin] Bulk clear / purge endpoint paths",
 			target:   "tool_input",
 			typ:      "regex",
 			pattern:  `(?i)/(?:clear|wipe|flush|purge|truncate|drop|destroy|factory[-_]reset|reset[-_]all)(?:[/?#"'\s]|$)`,
