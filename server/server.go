@@ -1870,6 +1870,8 @@ func (s *Server) settingsPayload() map[string]any {
 		"python_interpreter":  strings.TrimSpace(pyStored), // 用户/自动设的值(空=用运行时检测)
 		"workers":             s.m.Workers(),               // 并发工作 agent 数(默认3)；对之后启动的任务生效
 		"cost_limit_usd":      s.m.CostLimitUSD(),          // per-task est-cost budget in USD (0=off); task auto-pauses when reached
+		"shodan_key_set":      s.m.ShodanKey() != "",       // whether a Shodan API key is stored (value never returned)
+		"github_token_set":    s.m.GithubToken() != "",     // whether a GitHub token is stored (value never returned)
 	}
 }
 
@@ -1905,6 +1907,8 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		PythonInterp     *string  `json:"python_interpreter"` // 自定义脚本工具的 python 解释器路径
 		Workers          *int     `json:"workers"`            // 并发工作 agent 数(>0)；对之后启动的任务生效
 		CostLimitUSD     *float64 `json:"cost_limit_usd"`     // per-task est-cost budget USD (>=0, 0=off)
+		ShodanKey        *string  `json:"shodan_api_key"`     // Shodan API key; null=unchanged, ""=clear
+		GithubToken      *string  `json:"github_token"`       // GitHub token; null=unchanged, ""=clear
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, 400, err.Error())
@@ -1919,6 +1923,18 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	if req.CostLimitUSD != nil {
 		if err := s.m.SetCostLimitUSD(*req.CostLimitUSD); err != nil {
 			writeErr(w, 400, err.Error())
+			return
+		}
+	}
+	if req.ShodanKey != nil {
+		if err := s.m.pg.SetSetting(settingShodanKey, strings.TrimSpace(*req.ShodanKey)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.GithubToken != nil {
+		if err := s.m.pg.SetSetting(settingGithubToken, strings.TrimSpace(*req.GithubToken)); err != nil {
+			writeErr(w, 500, err.Error())
 			return
 		}
 	}

@@ -437,6 +437,11 @@ export interface Settings {
   python_interpreter?: string; // 自定义脚本工具的 python 解释器路径(空=运行时检测)
   workers?: number; // 并发工作 agent 数(默认3)；对之后启动的任务生效
   cost_limit_usd?: number; // per-task estimated-cost budget in USD (0=off); task auto-pauses when reached
+  // ASM/OSINT recon API keys. *_set reflects whether a key is stored (value never returned). On PUT, send the key field to set/clear.
+  shodan_key_set?: boolean;
+  github_token_set?: boolean;
+  shodan_api_key?: string; // write-only
+  github_token?: string; // write-only
 }
 
 // ---- 一键更新 ----

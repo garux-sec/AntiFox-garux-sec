@@ -89,6 +89,8 @@ const (
 	settingLLMPoolEnabled   = "llm_pool_enabled" // LLM 故障转移(轮询)总开关，默认关
 	settingGlobalProxy      = "global_proxy"     // 全局出口代理(http/https/socks5)：agent 目标流量作 MITM 上游出网；空=直连
 	settingCostLimitUSD     = "cost_limit_usd"   // per-task estimated-cost budget in USD; 0/unset = off (no auto-pause)
+	settingShodanKey        = "shodan_api_key"   // Shodan API key for ASM/OSINT recon collectors
+	settingGithubToken      = "github_token"     // GitHub token for code-search recon (secret/config leaks)
 	// defaultWebSearchBackend is used when web search is on but no backend was picked.
 	defaultWebSearchBackend = "ddgs"
 	// defaultWorkers is the concurrent work-agent count when the setting is unset.
@@ -153,6 +155,18 @@ func (m *Manager) SetWorkers(n int) error {
 		return fmt.Errorf("workers 必须 >0")
 	}
 	return m.pg.SetSetting(settingWorkers, strconv.Itoa(n))
+}
+
+// ShodanKey returns the stored Shodan API key for recon collectors (empty = unset).
+func (m *Manager) ShodanKey() string {
+	v, _, _ := m.pg.GetSetting(settingShodanKey)
+	return strings.TrimSpace(v)
+}
+
+// GithubToken returns the stored GitHub token for code-search recon (empty = unset).
+func (m *Manager) GithubToken() string {
+	v, _, _ := m.pg.GetSetting(settingGithubToken)
+	return strings.TrimSpace(v)
 }
 
 // Enrich returns the asset auto-completion engine (may be nil if init failed).

@@ -1296,6 +1296,12 @@
       "hint": "Estimated from the built-in price table — a rough figure, not a provider bill. Unknown models are not priced and never trigger a pause.",
       "errInvalid": "Budget must be a number >= 0",
       "saved": "Cost budget saved"
+    },
+    "recon": {
+      "title": "Recon / ASM API Keys",
+      "desc": "API keys for attack-surface (ASM) and OSINT recon collectors. Keys are stored server-side and never returned to the browser.",
+      "saved": "Recon API key saved",
+      "hint": "Shodan powers exposed-service/port/CVE lookups; a GitHub token enables code search for leaked secrets/configs (and raises rate limits). Used only for authorized recon of your own scope."
     }
   },
   "logs": {

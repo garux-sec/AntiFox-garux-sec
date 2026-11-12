@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { CpuIcon, DollarSignIcon, RadioTowerIcon, SearchIcon } from "lucide-react";
+import { CpuIcon, DollarSignIcon, RadarIcon, RadioTowerIcon, SearchIcon } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -39,6 +39,11 @@ export default function SystemSettingsPage() {
   const [savingWorkers, setSavingWorkers] = React.useState(false);
   const [costLimit, setCostLimit] = React.useState("0");
   const [savingCost, setSavingCost] = React.useState(false);
+  const [shodanKeySet, setShodanKeySet] = React.useState(false);
+  const [shodanKeyInput, setShodanKeyInput] = React.useState("");
+  const [githubTokenSet, setGithubTokenSet] = React.useState(false);
+  const [githubTokenInput, setGithubTokenInput] = React.useState("");
+  const [savingRecon, setSavingRecon] = React.useState(false);
   const [globalProxy, setGlobalProxy] = React.useState("");
   const [savingGlobalProxy, setSavingGlobalProxy] = React.useState(false);
   const [testingGlobalProxy, setTestingGlobalProxy] = React.useState(false);
@@ -55,7 +60,23 @@ export default function SystemSettingsPage() {
     setPyInterp(s.python_interpreter || "");
     setWorkers(String(s.workers ?? 3));
     setCostLimit(String(s.cost_limit_usd ?? 0));
+    setShodanKeySet(!!s.shodan_key_set);
+    setGithubTokenSet(!!s.github_token_set);
   }, []);
+
+  const saveReconKeys = (patch: Partial<Settings>) => {
+    setSavingRecon(true);
+    api
+      .setSettings(patch)
+      .then((s) => {
+        apply(s);
+        setShodanKeyInput("");
+        setGithubTokenInput("");
+        toast.success(t("settings.recon.saved"));
+      })
+      .catch((e) => toast.error(t("settings.saveFailed", { msg: (e as Error).message })))
+      .finally(() => setSavingRecon(false));
+  };
 
   const saveGlobalProxy = () => {
     setSavingGlobalProxy(true);
@@ -580,6 +601,59 @@ export default function SystemSettingsPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">{t("settings.costLimit.hint")}</p>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl lg:max-w-none">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <RadarIcon className="size-4" />
+            {t("settings.recon.title")}
+          </CardTitle>
+          <CardDescription>{t("settings.recon.desc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="shodan-key" className="text-sm font-normal text-muted-foreground">
+              Shodan API Key
+              {shodanKeySet && <span className="ml-2 text-xs text-emerald-500">{t("settings.webSearch.keySet")}</span>}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="shodan-key"
+                type="password"
+                autoComplete="off"
+                placeholder={shodanKeySet ? t("settings.webSearch.keySetPlaceholder") : "Shodan API key"}
+                value={shodanKeyInput}
+                disabled={!loaded || savingRecon}
+                onChange={(e) => setShodanKeyInput(e.target.value)}
+              />
+              <Button type="button" onClick={() => saveReconKeys({ shodan_api_key: shodanKeyInput })} disabled={!loaded || savingRecon || shodanKeyInput.trim() === ""}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="github-token" className="text-sm font-normal text-muted-foreground">
+              GitHub Token
+              {githubTokenSet && <span className="ml-2 text-xs text-emerald-500">{t("settings.webSearch.keySet")}</span>}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="github-token"
+                type="password"
+                autoComplete="off"
+                placeholder={githubTokenSet ? t("settings.webSearch.keySetPlaceholder") : "ghp_… (code search)"}
+                value={githubTokenInput}
+                disabled={!loaded || savingRecon}
+                onChange={(e) => setGithubTokenInput(e.target.value)}
+              />
+              <Button type="button" onClick={() => saveReconKeys({ github_token: githubTokenInput })} disabled={!loaded || savingRecon || githubTokenInput.trim() === ""}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">{t("settings.recon.hint")}</p>
         </CardContent>
       </Card>
       </div>
