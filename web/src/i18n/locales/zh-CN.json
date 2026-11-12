@@ -1066,7 +1066,9 @@
     "fetchModels": "获取模型",
     "priceHint": "价格为每 100 万 token 的美元(输入/输出),按内置表估算;\"—\" = 未知模型。",
     "priceTooltip": "≈ 输入 ${{in}} / 输出 ${{out}} / 缓存 ${{cache}} — 每 100 万 token",
-    "priceUnknownTip": "内置价格表中无此模型(显示为 —)"
+    "priceUnknownTip": "内置价格表中无此模型(显示为 —)",
+    "chatOnly": "仅对话模型",
+    "showAllModels": "显示全部(+{{count}} 非对话)"
   },
   "rbac": {
     "title": "用户管理",

@@ -41,6 +41,12 @@ const EFFORT_LEVELS: { value: string; labelKey: string }[] = [
 //   off →"off"（发送 thinking:{type:disabled}，用于默认开启思考、需要显式关闭的模型）
 //   on  →强度值（发送 thinking:{enabled} + reasoning_effort）
 type ThinkMode = "none" | "off" | "on";
+
+// A provider's /models list includes non-chat models (TTS, transcription,
+// embeddings, moderation, image, realtime, rerank/parse…) that the chat endpoint
+// rejects. This matches those ids so the picker can hide them by default.
+const NON_CHAT_RE = /(?:tts|whisper|transcrib|speech|[-_]voice\b|\baudio\b|embed|rerank|moder|image|dall-?e|realtime|search-api|parse|ocr|guard|\bclip\b)/i;
+const isChatModel = (id: string) => !NON_CHAT_RE.test(id);
 const THINK_MODES: { value: ThinkMode; labelKey: string }[] = [
   { value: "none", labelKey: "llm.thinkMode.none" },
   { value: "off", labelKey: "llm.thinkMode.off" },
@@ -296,6 +302,7 @@ export default function LLMPage() {
   const [testing, setTesting] = React.useState(false);
   const [fetchedModels, setFetchedModels] = React.useState<string[]>([]);
   const [fetchingModels, setFetchingModels] = React.useState(false);
+  const [showAllModels, setShowAllModels] = React.useState(false);
 
   const [pool, setPool] = React.useState<LLMPoolStatus | null>(null);
   const [poolBusy, setPoolBusy] = React.useState(false);
@@ -684,10 +691,14 @@ export default function LLMPage() {
                       {fetchingModels ? <Loader2Icon className="size-4 animate-spin" /> : t("llm.fetchModels")}
                     </Button>
                   </div>
-                  {fetchedModels.length > 0 && (
+                  {fetchedModels.length > 0 && (() => {
+                    const chatModels = fetchedModels.filter(isChatModel);
+                    const shown = showAllModels ? fetchedModels : chatModels;
+                    const hidden = fetchedModels.length - chatModels.length;
+                    return (
                     <>
                     <div className="mt-1 flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2">
-                      {fetchedModels.map((m) => {
+                      {shown.map((m) => {
                         const p = priceFor(m);
                         const active = m === model;
                         return (
@@ -711,9 +722,21 @@ export default function LLMPage() {
                         );
                       })}
                     </div>
-                    <p className="text-[10px] text-muted-foreground/70">{t("llm.priceHint")}</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-muted-foreground/70">{t("llm.priceHint")}</p>
+                      {hidden > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllModels((v) => !v)}
+                          className="shrink-0 text-[10px] text-blue-500 hover:underline"
+                        >
+                          {showAllModels ? t("llm.chatOnly") : t("llm.showAllModels", { count: hidden })}
+                        </button>
+                      )}
+                    </div>
                     </>
-                  )}
+                    );
+                  })()}
                 </div>
 
                 <div className="grid gap-2">

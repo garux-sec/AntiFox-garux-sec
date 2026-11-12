@@ -1066,7 +1066,9 @@
     "fetchModels": "取得模型",
     "priceHint": "價格為每 100 萬 token 的美元(輸入/輸出),依內建表估算;\"—\" = 未知模型。",
     "priceTooltip": "≈ 輸入 ${{in}} / 輸出 ${{out}} / 快取 ${{cache}} — 每 100 萬 token",
-    "priceUnknownTip": "內建價格表中無此模型(顯示為 —)"
+    "priceUnknownTip": "內建價格表中無此模型(顯示為 —)",
+    "chatOnly": "僅對話模型",
+    "showAllModels": "顯示全部(+{{count}} 非對話)"
   },
   "rbac": {
     "title": "使用者管理",
