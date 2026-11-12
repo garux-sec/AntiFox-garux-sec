@@ -204,6 +204,8 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string) *Serv
 		}
 		wireAgentAugment(m.pg, s.skillDir, s.hostTools) // 可见 skills/MCP + 流量/编排 host 工具装配进 agent 工具集
 		domainReg := buildDomainReg(m.Assets())
+		agent.ReconKeys.Shodan = m.ShodanKey            // ASM recon collectors read keys lazily from settings
+		agent.ReconKeys.Github = m.GithubToken
 		wireTools(m.pg, domainReg)                      // 内置工具表：按 agent 过滤 + 覆盖描述/schema + 注入默认值
 		seedPrompts(m.pg)                               // 内置 agent 默认提示词正文播种进 agent_prompts(仅空时)
 		s.seedOrchestrationTools()                      // P2 跨任务编排工具 seed 进 tools 表(可按 agent 绑定)

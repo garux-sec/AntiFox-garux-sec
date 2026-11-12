@@ -485,6 +485,8 @@ func (t *ToolSet) WorkerTools() []actool.CoreTool {
 		t.insertAssets(), t.addCompanyScope(), t.listAssets(), t.listCompanies(),
 		// knowledge base (global + this task); nil store guarded internally
 		t.searchKnowledge(), t.listKnowledgeCategories(),
+		// ASM / OSINT passive recon collectors
+		t.crtSh(), t.dnsLookup(), t.rdapWhois(), t.shodanHost(), t.githubCodeSearch(),
 	}
 }
 
@@ -497,6 +499,8 @@ func (t *ToolSet) MainAgentTools() []actool.CoreTool {
 		t.insertAssets(), t.addCompanyScope(), t.listAssets(),
 		// knowledge base (global + this task)
 		t.searchKnowledge(), t.listKnowledgeCategories(),
+		// ASM / OSINT passive recon collectors
+		t.crtSh(), t.dnsLookup(), t.rdapWhois(), t.shodanHost(), t.githubCodeSearch(),
 	}
 }
 
