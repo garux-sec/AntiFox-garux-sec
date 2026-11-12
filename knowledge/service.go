@@ -130,7 +130,7 @@ func (s *Service) SearchAndLog(ctx context.Context, query string, taskID int64, 
 // semantic search to be ready.
 func (s *Service) Reindex(ctx context.Context) (int, error) {
 	if !s.SemanticReady() {
-		return 0, fmt.Errorf("语义检索未就绪：需 pgvector + 启用 embedder + 配置 api_key")
+		return 0, fmt.Errorf("semantic search is not ready: requires pgvector + an enabled embedder + a configured api_key")
 	}
 	if err := s.pg.ClearKnowledgeChunks(); err != nil {
 		return 0, err
@@ -142,7 +142,7 @@ func (s *Service) Reindex(ctx context.Context) (int, error) {
 	n := 0
 	for _, doc := range docs {
 		if err := s.IndexDoc(ctx, doc.ID); err != nil {
-			return n, fmt.Errorf("文档 #%d(%s) 索引失败: %w", doc.ID, doc.Title, err)
+			return n, fmt.Errorf("failed to index document #%d(%s): %w", doc.ID, doc.Title, err)
 		}
 		n++
 	}
@@ -157,14 +157,14 @@ func (s *Service) TestEmbedder(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	if strings.TrimSpace(cfg.APIKey) == "" {
-		return 0, fmt.Errorf("未配置 api_key")
+		return 0, fmt.Errorf("api_key is not configured")
 	}
-	vecs, err := EmbedTexts(ctx, cfg, []string{"知识库连通性测试 knowledge base connectivity test"})
+	vecs, err := EmbedTexts(ctx, cfg, []string{"knowledge base connectivity test"})
 	if err != nil {
 		return 0, err
 	}
 	if len(vecs) != 1 || len(vecs[0]) == 0 {
-		return 0, fmt.Errorf("embedder 返回空向量")
+		return 0, fmt.Errorf("embedder returned an empty vector")
 	}
 	return len(vecs[0]), nil
 }

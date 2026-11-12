@@ -394,16 +394,16 @@ func (s *Server) seedOrchestrationTools() {
 	s.seedPlannerDefaultBindings()
 	s.seedAutoReportFindingBinding()
 	s.seedMainagentReportFindingBinding()
-	s.reseedAgentPrompt("mainagent", "prompt_exposure_findings_mainagent_v1", "记录暴露/信息泄露类发现 + 梳理时把已证实暴露落库")
-	s.reseedAgentPrompt("worker", "prompt_exposure_findings_worker_v1", "暴露/信息泄露类也记为发现")
-	s.reseedAgentPrompt("pentest", "prompt_exposure_findings_pentest_v1", "暴露/信息泄露类也记为发现")
+	s.reseedAgentPrompt("mainagent", "prompt_exposure_findings_mainagent_v1", "Record exposure/information-disclosure findings + persist confirmed exposures during review")
+	s.reseedAgentPrompt("worker", "prompt_exposure_findings_worker_v1", "Record exposure/information-disclosure cases as findings too")
+	s.reseedAgentPrompt("pentest", "prompt_exposure_findings_pentest_v1", "Record exposure/information-disclosure cases as findings too")
 	// 参考 AntiFox 0.3.4–0.3.6 的自主性提示词改进（适配我们无 coverage 子系统的口径）：
-	s.reseedAgentPrompt("planner", "prompt_zerointent_acceptance_v1", "0意图判据重写（两类正当理由）+ 量化验收核对（未达标禁止提前收官）")
-	s.reseedAgentPrompt("worker", "prompt_negfact_threshold_v1", "否定结论证据门槛：穷尽手段前一律标 inferred，别用轻率 observed 焊死方向")
+	s.reseedAgentPrompt("planner", "prompt_zerointent_acceptance_v1", "Rewrite the zero-intent criteria (two kinds of valid justification) + quantified acceptance check (no early sign-off until targets are met)")
+	s.reseedAgentPrompt("worker", "prompt_negfact_threshold_v1", "Evidence threshold for negative conclusions: mark inferred until all means are exhausted; don't lock in a direction with a hasty observed")
 	// 就地记录复现过程：确认漏洞时在 report_finding 填结构化 reproduction（入口/前置/有序真实步骤/来源）。
-	s.reseedAgentPrompt("worker", "prompt_reproduction_recipe_v1", "report_finding 填结构化复现过程(就地记录,请求逐字真实)")
-	s.reseedAgentPrompt("pentest", "prompt_reproduction_recipe_pentest_v1", "report_finding 填结构化复现过程")
-	s.reseedAgentPrompt("mainagent", "prompt_reproduction_recipe_mainagent_v1", "report_finding 填结构化复现过程")
+	s.reseedAgentPrompt("worker", "prompt_reproduction_recipe_v1", "Fill a structured reproduction procedure in report_finding (recorded in place, requests verbatim and real)")
+	s.reseedAgentPrompt("pentest", "prompt_reproduction_recipe_pentest_v1", "Fill a structured reproduction procedure in report_finding")
+	s.reseedAgentPrompt("mainagent", "prompt_reproduction_recipe_mainagent_v1", "Fill a structured reproduction procedure in report_finding")
 	s.bumpWorkerRunSecondsTo1200() // worker 单轮墙钟 600→1200s（仅未被自定义的默认值；参考 AntiFox 0.3.3）
 	// 注：pentest 的默认工具绑定无需迁移——BuiltinToolSeeds 在全新初始化时就把
 	// list_assets/insert_assets/report_finding/list_findings/list_companies 连同
@@ -534,7 +534,7 @@ func (s *Server) reseedAgentPrompt(key, flag, note string) {
 		_ = s.m.pg.SetSetting(flag, "true")
 		return
 	}
-	if _, err := s.m.pg.SavePrompt(a.ID, tmpl, "系统更新："+note, "system"); err != nil {
+	if _, err := s.m.pg.SavePrompt(a.ID, tmpl, "System update: "+note, "system"); err != nil {
 		log.Printf("[%s] prompt replay failed: %v", key, err)
 		return
 	}

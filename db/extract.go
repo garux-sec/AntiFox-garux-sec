@@ -29,12 +29,12 @@ func (d *DB) ExplorationSynthesis(expID int64, maxChars int) string {
 		if b.Len()+len(content) > maxChars {
 			remain := maxChars - b.Len()
 			if remain > 200 {
-				b.WriteString("\n【" + worker + "】\n")
+				b.WriteString("\n[" + worker + "]\n")
 				b.WriteString(content[:remain])
 			}
 			break
 		}
-		b.WriteString("\n【" + worker + "】\n")
+		b.WriteString("\n[" + worker + "]\n")
 		b.WriteString(content)
 	}
 	return b.String()
@@ -81,19 +81,19 @@ func (d *DB) FindingReproTranscript(nodeID int64, maxChars int) string {
 		// Responses (tool_result) can be huge (full 4KB+ pages); the recipe needs the
 		// status line + a short indicator, not the whole body. Requests kept full.
 		if kind == "tool_result" && len(content) > 700 {
-			content = strings.ToValidUTF8(content[:700], "") + " …(响应已截断)"
+			content = strings.ToValidUTF8(content[:700], "") + " …(response truncated)"
 		}
-		label := "请求"
+		label := "Request"
 		if kind == "tool_result" {
-			label = "响应"
+			label = "Response"
 		} else if kind == "result" {
-			label = "小结"
+			label = "Summary"
 		}
-		hdr := "\n【" + label
+		hdr := "\n[" + label
 		if tool != "" {
 			hdr += ":" + tool
 		}
-		hdr += "】\n"
+		hdr += "]\n"
 		if b.Len()+len(hdr)+len(content) > maxChars {
 			break
 		}
@@ -131,11 +131,11 @@ func (d *DB) FindingSourceTranscript(nodeID int64, maxChars int) string {
 		if err := rows.Scan(&worker, &kind, &tool, &content); err != nil {
 			break
 		}
-		hdr := "\n【" + worker + " · " + kind
+		hdr := "\n[" + worker + " · " + kind
 		if tool != "" {
 			hdr += ":" + tool
 		}
-		hdr += "】\n"
+		hdr += "]\n"
 		if b.Len()+len(hdr)+len(content) > maxChars {
 			if remain := maxChars - b.Len() - len(hdr); remain > 200 {
 				b.WriteString(hdr)

@@ -87,10 +87,10 @@ func (g *Guard) preToolUse(ctx context.Context, ev hook.Event) hook.Result {
 
 	// destructive / exfil gating (§11 side-effect gating)
 	if reDestructive.MatchString(cmd) {
-		return g.block(ev.ToolName, "破坏性命令被安全边界拒绝（需人工批准）", cmd)
+		return g.block(ev.ToolName, "destructive command rejected by the safety boundary (requires manual approval)", cmd)
 	}
 	if reExfil.MatchString(cmd) {
-		return g.block(ev.ToolName, "疑似数据外泄管道被拒绝", cmd)
+		return g.block(ev.ToolName, "suspected data-exfiltration pipeline rejected", cmd)
 	}
 
 	g.record(ev.ToolName, "allow", "", cmd)
@@ -120,11 +120,11 @@ func (g *Guard) applyIntercept(ctx context.Context, ev hook.Event) hook.Result {
 		// immediately without creating a pending record — avoids orphaned DB entries
 		// and makes execOne complete fast, reducing the race against drainSynthetic.
 		if ctx.Err() != nil {
-			return g.block(ev.ToolName, "工作已取消，拦截规则阻止执行", "")
+			return g.block(ev.ToolName, "work cancelled; intercept rule blocked execution", "")
 		}
 		convID := intercept.ConvIDFromContext(ctx)
 		if !g.interceptor.HandleAsk(ctx, convID, dec, ev.ToolName, ev.Input) {
-			return g.block(ev.ToolName, "用户拒绝或审批超时", "")
+			return g.block(ev.ToolName, "user denied or approval timed out", "")
 		}
 		return hook.Result{}
 	}

@@ -39,7 +39,7 @@ func (s *Server) pgCreateTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if a.Builtin {
-		writeErr(w, 400, "触发器仅支持自定义 agent")
+		writeErr(w, 400, "triggers are only supported for custom agents")
 		return
 	}
 	var req triggerReq
@@ -51,7 +51,7 @@ func (s *Server) pgCreateTrigger(w http.ResponseWriter, r *http.Request) {
 		req.IntervalSec = 0
 	}
 	if req.IntervalSec == 0 && !req.OnFinding && !req.OnGoalMet && !req.OnTaskTimeout {
-		writeErr(w, 400, "至少选择一种触发条件(定时/发现finding/目标达成/任务超时)")
+		writeErr(w, 400, "select at least one trigger condition (schedule/on-finding/goal-met/task-timeout)")
 		return
 	}
 	tr, err := pg.CreateTrigger(&db.AgentTrigger{
@@ -86,7 +86,7 @@ func (s *Server) pgUpdateTrigger(w http.ResponseWriter, r *http.Request) {
 		req.IntervalSec = 0
 	}
 	if req.IntervalSec == 0 && !req.OnFinding && !req.OnGoalMet && !req.OnTaskTimeout {
-		writeErr(w, 400, "至少选择一种触发条件(定时/发现finding/目标达成/任务超时)")
+		writeErr(w, 400, "select at least one trigger condition (schedule/on-finding/goal-met/task-timeout)")
 		return
 	}
 	if err := pg.UpdateTrigger(&db.AgentTrigger{

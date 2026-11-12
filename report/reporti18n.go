@@ -17,10 +17,12 @@ func normLocale(l string) string {
 	switch strings.ToLower(strings.TrimSpace(l)) {
 	case "zh-tw", "zh_tw", "zh-hant", "tw", "hant":
 		return "zh-TW"
+	case "zh-cn", "zh_cn", "zh-hans", "cn", "hans":
+		return "zh-CN"
 	case "en", "en-us", "en_us", "en-gb":
 		return "en-US"
 	default:
-		return "zh-CN"
+		return "en-US"
 	}
 }
 

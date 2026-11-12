@@ -24,42 +24,42 @@ const (
 
 // RBACPermissions —— 平台权限目录（module:action），按 AntiFox 实际模块定义。
 var RBACPermissions = map[string]string{
-	"auth:self":       "管理自己的会话和密码",
-	"dashboard:read":  "查看仪表盘总览",
-	"task:read":       "查看任务 / 探索链路 / 会话",
-	"task:write":      "创建 / 控制任务、发送对话引导",
-	"task:delete":     "删除任务",
-	"finding:read":    "查看漏洞发现",
-	"finding:write":   "创建 / 更新漏洞发现",
-	"finding:delete":  "删除漏洞发现",
-	"traffic:read":    "查看流量录制",
-	"asset:read":      "查看资产 / 公司",
-	"asset:write":     "创建 / 导入 / 同步资产",
-	"asset:delete":    "删除资产",
-	"llm:read":        "查看 LLM 配置",
-	"llm:write":       "管理 LLM 配置与模型",
-	"agent:read":      "查看 Agent 配置",
-	"agent:write":     "管理 Agent / 提示词 / 触发器",
-	"mcp:read":        "查看 MCP 服务",
-	"mcp:write":       "管理 MCP 服务",
-	"skill:read":      "查看技能",
-	"skill:write":     "创建 / 更新技能",
-	"skill:delete":    "删除技能",
-	"tool:read":       "查看工具",
-	"tool:write":      "管理工具 / 自定义工具",
-	"intercept:read":  "查看拦截规则 / 审批",
-	"intercept:write": "管理拦截规则 / 处理审批",
-	"log:read":        "查看后端日志 / 审计",
-	"config:read":     "查看系统配置",
-	"config:write":    "修改系统配置",
-	"knowledge:read":   "查看知识库 / 检索",
-	"knowledge:write":  "创建 / 更新知识库文档、配置 embedder",
-	"knowledge:delete": "删除知识库文档",
-	"report:read":      "查看 / 下载报告、模版与报告设置",
-	"report:write":     "生成报告、管理模版与报告设置",
-	"report:delete":    "删除报告 / 模版",
-	"rbac:read":       "查看用户 / 角色 / 权限",
-	"rbac:write":      "管理用户 / 角色 / 权限",
+	"auth:self":       "Manage your own sessions and password",
+	"dashboard:read":  "View the dashboard overview",
+	"task:read":       "View tasks / exploration chains / sessions",
+	"task:write":      "Create / control tasks, send conversation guidance",
+	"task:delete":     "Delete tasks",
+	"finding:read":    "View findings",
+	"finding:write":   "Create / update findings",
+	"finding:delete":  "Delete findings",
+	"traffic:read":    "View traffic recordings",
+	"asset:read":      "View assets / companies",
+	"asset:write":     "Create / import / sync assets",
+	"asset:delete":    "Delete assets",
+	"llm:read":        "View LLM configuration",
+	"llm:write":       "Manage LLM configuration and models",
+	"agent:read":      "View agent configuration",
+	"agent:write":     "Manage agents / prompts / triggers",
+	"mcp:read":        "View MCP services",
+	"mcp:write":       "Manage MCP services",
+	"skill:read":      "View skills",
+	"skill:write":     "Create / update skills",
+	"skill:delete":    "Delete skills",
+	"tool:read":       "View tools",
+	"tool:write":      "Manage tools / custom tools",
+	"intercept:read":  "View intercept rules / approvals",
+	"intercept:write": "Manage intercept rules / handle approvals",
+	"log:read":        "View backend logs / audit",
+	"config:read":     "View system configuration",
+	"config:write":    "Modify system configuration",
+	"knowledge:read":   "View the knowledge base / search",
+	"knowledge:write":  "Create / update knowledge-base documents, configure the embedder",
+	"knowledge:delete": "Delete knowledge-base documents",
+	"report:read":      "View / download reports, templates, and report settings",
+	"report:write":     "Generate reports, manage templates and report settings",
+	"report:delete":    "Delete reports / templates",
+	"rbac:read":       "View users / roles / permissions",
+	"rbac:write":      "Manage users / roles / permissions",
 }
 
 // RBACUser 平台账号。
@@ -324,7 +324,7 @@ func (d *DB) ListRBACUserRoleIDs(userID string) ([]string, error) {
 func (d *DB) CreateRBACUser(username, displayName, passwordHash string, enabled bool, roleIDs []string) (*RBACUser, error) {
 	username = strings.TrimSpace(strings.ToLower(username))
 	if username == "" || passwordHash == "" {
-		return nil, errors.New("用户名与密码必填")
+		return nil, errors.New("username and password are required")
 	}
 	id := newRBACID()
 	now := time.Now()
@@ -353,7 +353,7 @@ func (d *DB) CreateRBACUser(username, displayName, passwordHash string, enabled 
 func (d *DB) UpdateRBACUser(userID, displayName string, enabled *bool, roleIDs *[]string) error {
 	userID = strings.TrimSpace(userID)
 	if userID == "" {
-		return errors.New("缺少用户 ID")
+		return errors.New("missing user ID")
 	}
 	tx, err := d.Begin()
 	if err != nil {
@@ -391,7 +391,7 @@ func (d *DB) UpdateRBACUser(userID, displayName string, enabled *bool, roleIDs *
 
 func (d *DB) UpdateRBACUserPassword(userID, passwordHash string) error {
 	if strings.TrimSpace(userID) == "" || passwordHash == "" {
-		return errors.New("参数缺失")
+		return errors.New("missing parameters")
 	}
 	// token_version+1：改密即作废该用户此前签发的所有 JWT（旧 token 下次请求被拒）。
 	_, err := d.Exec(`UPDATE rbac_users SET password_hash=$1,token_version=token_version+1,updated_at=now() WHERE id=$2`, passwordHash, userID)
@@ -401,7 +401,7 @@ func (d *DB) UpdateRBACUserPassword(userID, passwordHash string) error {
 func (d *DB) DeleteRBACUser(userID string) error {
 	userID = strings.TrimSpace(userID)
 	if userID == "" || userID == "admin" {
-		return errors.New("该用户不可删除")
+		return errors.New("this user cannot be deleted")
 	}
 	_, err := d.Exec(`DELETE FROM rbac_users WHERE id=$1 AND is_builtin=false`, userID)
 	return err
@@ -457,13 +457,13 @@ func (d *DB) ListRBACRolePermissionKeys(roleID string) ([]string, error) {
 func (d *DB) UpsertRBACRole(id, name, description, scope string, permKeys []string) (*RBACRole, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return nil, errors.New("角色名不能为空")
+		return nil, errors.New("role name cannot be empty")
 	}
 	if scope != RBACScopeAll && scope != RBACScopeAssigned && scope != RBACScopeOwn {
 		scope = RBACScopeAssigned
 	}
 	if id == RBACRoleAdmin || id == RBACRoleOperator || id == RBACRoleAuditor || id == RBACRoleViewer {
-		return nil, errors.New("系统角色不可编辑")
+		return nil, errors.New("system roles cannot be edited")
 	}
 	if strings.TrimSpace(id) == "" {
 		id = newRBACID()
@@ -488,7 +488,7 @@ func (d *DB) UpsertRBACRole(id, name, description, scope string, permKeys []stri
 			continue
 		}
 		if _, ok := RBACPermissions[k]; !ok {
-			return nil, errors.New("未知权限: " + k)
+			return nil, errors.New("unknown permission: " + k)
 		}
 		if _, err := tx.Exec(`INSERT INTO rbac_role_permissions(role_id,permission_key) VALUES ($1,$2) ON CONFLICT DO NOTHING`, id, k); err != nil {
 			return nil, err
@@ -503,7 +503,7 @@ func (d *DB) UpsertRBACRole(id, name, description, scope string, permKeys []stri
 func (d *DB) DeleteRBACRole(id string) error {
 	id = strings.TrimSpace(id)
 	if id == RBACRoleAdmin || id == RBACRoleOperator || id == RBACRoleAuditor || id == RBACRoleViewer {
-		return errors.New("系统角色不可删除")
+		return errors.New("system roles cannot be deleted")
 	}
 	_, err := d.Exec(`DELETE FROM rbac_roles WHERE id=$1 AND is_system=false`, id)
 	return err

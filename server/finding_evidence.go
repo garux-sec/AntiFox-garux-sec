@@ -40,29 +40,29 @@ func sanitizeImage(raw []byte) (out []byte, ext string, err error) {
 	switch ct {
 	case "image/png", "image/jpeg", "image/gif":
 	default:
-		return nil, "", fmt.Errorf("仅支持 png/jpg/gif 图片（检测到 %s）", ct)
+		return nil, "", fmt.Errorf("only png/jpg/gif images are supported (detected %s)", ct)
 	}
 	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
 	if err != nil {
-		return nil, "", fmt.Errorf("不是有效图片")
+		return nil, "", fmt.Errorf("not a valid image")
 	}
 	if cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width > evidenceMaxDim || cfg.Height > evidenceMaxDim ||
 		cfg.Width*cfg.Height > evidenceMaxPixels {
-		return nil, "", fmt.Errorf("图片尺寸超限")
+		return nil, "", fmt.Errorf("image dimensions exceed the limit")
 	}
 	img, _, err := image.Decode(bytes.NewReader(raw))
 	if err != nil {
-		return nil, "", fmt.Errorf("图片解码失败")
+		return nil, "", fmt.Errorf("image decoding failed")
 	}
 	var buf bytes.Buffer
 	if ct == "image/jpeg" {
 		if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}); err != nil {
-			return nil, "", fmt.Errorf("图片处理失败")
+			return nil, "", fmt.Errorf("image processing failed")
 		}
 		return buf.Bytes(), ".jpg", nil
 	}
 	if err := png.Encode(&buf, img); err != nil {
-		return nil, "", fmt.Errorf("图片处理失败")
+		return nil, "", fmt.Errorf("image processing failed")
 	}
 	return buf.Bytes(), ".png", nil
 }
@@ -85,27 +85,27 @@ func (s *Server) uploadFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	}
 	nodeID, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "无效的漏洞 id")
+		writeErr(w, 400, "invalid vulnerability id")
 		return
 	}
 	if err := r.ParseMultipartForm(16 << 20); err != nil { // 16 MB
-		writeErr(w, 400, "上传解析失败")
+		writeErr(w, 400, "upload parsing failed")
 		return
 	}
 	file, _, err := r.FormFile("file")
 	if err != nil {
-		writeErr(w, 400, "缺少文件")
+		writeErr(w, 400, "missing file")
 		return
 	}
 	defer file.Close()
 	// 读入内存(限 16MB)→内容级校验+重编码，不信任扩展名/客户端 MIME。
 	raw, err := io.ReadAll(io.LimitReader(file, evidenceMaxBytes+1))
 	if err != nil {
-		writeErr(w, 400, "读取文件失败")
+		writeErr(w, 400, "failed to read file")
 		return
 	}
 	if len(raw) > evidenceMaxBytes {
-		writeErr(w, 400, "图片过大（上限 16MB）")
+		writeErr(w, 400, "image too large (16MB limit)")
 		return
 	}
 	clean, ext, err := sanitizeImage(raw)
@@ -115,12 +115,12 @@ func (s *Server) uploadFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	}
 	dir := s.evidenceDir(nodeID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		writeErr(w, 500, "创建目录失败")
+		writeErr(w, 500, "failed to create directory")
 		return
 	}
 	name := fmt.Sprintf("ev-%d%s", time.Now().UnixNano(), ext)
 	if err := os.WriteFile(filepath.Join(dir, name), clean, 0o644); err != nil {
-		writeErr(w, 500, "写入失败")
+		writeErr(w, 500, "write failed")
 		return
 	}
 	caption := strings.TrimSpace(r.FormValue("caption"))
@@ -132,7 +132,7 @@ func (s *Server) uploadFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	ev, err := pg.CreateFindingEvidence(nodeID, name, caption, stepIndex)
 	if err != nil {
 		_ = os.Remove(filepath.Join(dir, name)) // 回滚落盘
-		writeErr(w, 500, "保存失败: "+err.Error())
+		writeErr(w, 500, "save failed: "+err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]any{"evidence": ev, "url": evidenceURL(nodeID, name)})
@@ -162,7 +162,7 @@ func (s *Server) deriveEvidenceCaption(nodeID int64, stepIndex int) string {
 		return ""
 	}
 	text = strings.SplitN(text, "\n", 2)[0] // 收敛到一行，适合缩略图下的图注
-	return clipUTF8(fmt.Sprintf("步骤%d：%s", stepIndex, text), 120)
+	return clipUTF8(fmt.Sprintf("Step %d: %s", stepIndex, text), 120)
 }
 
 // GET /api/findings/{id}/evidence — 列出某漏洞全部证据（带取图 url）。
@@ -173,12 +173,12 @@ func (s *Server) listFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	}
 	nodeID, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "无效的漏洞 id")
+		writeErr(w, 400, "invalid vulnerability id")
 		return
 	}
 	list, err := pg.ListFindingEvidence(nodeID)
 	if err != nil {
-		writeErr(w, 500, "获取失败")
+		writeErr(w, 500, "fetch failed")
 		return
 	}
 	out := make([]map[string]any, 0, len(list))
@@ -196,7 +196,7 @@ func (s *Server) updateFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	}
 	eid, ok := pathInt(r, "eid")
 	if !ok {
-		writeErr(w, 400, "无效的证据 id")
+		writeErr(w, 400, "invalid evidence id")
 		return
 	}
 	var req struct {
@@ -205,11 +205,11 @@ func (s *Server) updateFindingEvidence(w http.ResponseWriter, r *http.Request) {
 		SortOrder int    `json:"sort_order"`
 	}
 	if err := decode(r, &req); err != nil {
-		writeErr(w, 400, "请求格式错误")
+		writeErr(w, 400, "malformed request")
 		return
 	}
 	if err := pg.UpdateFindingEvidence(eid, req.Caption, req.StepIndex, req.SortOrder); err != nil {
-		writeErr(w, 500, "保存失败: "+err.Error())
+		writeErr(w, 500, "save failed: "+err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]any{"ok": true})
@@ -223,16 +223,16 @@ func (s *Server) deleteFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	}
 	eid, ok := pathInt(r, "eid")
 	if !ok {
-		writeErr(w, 400, "无效的证据 id")
+		writeErr(w, 400, "invalid evidence id")
 		return
 	}
 	ev, err := pg.GetFindingEvidence(eid)
 	if err != nil {
-		writeErr(w, 404, "证据不存在")
+		writeErr(w, 404, "evidence not found")
 		return
 	}
 	if err := pg.DeleteFindingEvidence(eid); err != nil {
-		writeErr(w, 500, "删除失败: "+err.Error())
+		writeErr(w, 500, "delete failed: "+err.Error())
 		return
 	}
 	_ = os.Remove(filepath.Join(s.evidenceDir(ev.NodeID), filepath.Base(ev.Filename)))
@@ -243,7 +243,7 @@ func (s *Server) deleteFindingEvidence(w http.ResponseWriter, r *http.Request) {
 func (s *Server) serveFindingEvidence(w http.ResponseWriter, r *http.Request) {
 	nodeID, ok := pathInt(r, "id")
 	if !ok {
-		writeErr(w, 400, "无效的漏洞 id")
+		writeErr(w, 400, "invalid vulnerability id")
 		return
 	}
 	file := filepath.Base(r.PathValue("file"))

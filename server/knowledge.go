@@ -30,7 +30,7 @@ func (s *Server) listKnowledge(w http.ResponseWriter, r *http.Request) {
 	taskID, _ := strconv.ParseInt(r.URL.Query().Get("task"), 10, 64)
 	docs, err := s.m.pg.ListKnowledgeDocs(scope, taskID)
 	if err != nil {
-		writeErr(w, 500, "读取失败: "+err.Error())
+		writeErr(w, 500, "Read failed: "+err.Error())
 		return
 	}
 	writeJSON(w, 200, docs)
@@ -45,7 +45,7 @@ func (s *Server) getKnowledge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if doc == nil {
-		writeErr(w, 404, "文档不存在")
+		writeErr(w, 404, "Document does not exist")
 		return
 	}
 	writeJSON(w, 200, doc)
@@ -63,11 +63,11 @@ type knowledgeDocBody struct {
 func (s *Server) createKnowledge(w http.ResponseWriter, r *http.Request) {
 	var b knowledgeDocBody
 	if err := decode(r, &b); err != nil {
-		writeErr(w, 400, "请求格式错误")
+		writeErr(w, 400, "Malformed request")
 		return
 	}
 	if strings.TrimSpace(b.Title) == "" {
-		writeErr(w, 400, "标题不能为空")
+		writeErr(w, 400, "Title cannot be empty")
 		return
 	}
 	doc := &db.KnowledgeDoc{Scope: b.Scope, Category: b.Category, Title: b.Title, Content: b.Content, Source: "manual"}
@@ -76,7 +76,7 @@ func (s *Server) createKnowledge(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := s.m.pg.AddKnowledgeDoc(doc)
 	if err != nil {
-		writeErr(w, 500, "保存失败: "+err.Error())
+		writeErr(w, 500, "Save failed: "+err.Error())
 		return
 	}
 	go s.indexKnowledgeAsync(id)
@@ -89,7 +89,7 @@ func (s *Server) updateKnowledge(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	var b knowledgeDocBody
 	if err := decode(r, &b); err != nil {
-		writeErr(w, 400, "请求格式错误")
+		writeErr(w, 400, "Malformed request")
 		return
 	}
 	if err := s.m.pg.UpdateKnowledgeDoc(id, b.Category, b.Title, b.Content); err != nil {
@@ -114,18 +114,18 @@ func (s *Server) deleteKnowledge(w http.ResponseWriter, r *http.Request) {
 // POST /api/knowledge/upload — multipart: file + scope + task_id + category.
 func (s *Server) uploadKnowledge(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(32 << 20); err != nil {
-		writeErr(w, 400, "上传解析失败")
+		writeErr(w, 400, "Upload parse failed")
 		return
 	}
 	file, hdr, err := r.FormFile("file")
 	if err != nil {
-		writeErr(w, 400, "缺少文件")
+		writeErr(w, 400, "Missing file")
 		return
 	}
 	defer file.Close()
 	raw, err := io.ReadAll(io.LimitReader(file, 32<<20))
 	if err != nil {
-		writeErr(w, 400, "读取失败")
+		writeErr(w, 400, "Read failed")
 		return
 	}
 	text, err := knowledge.ExtractText(hdr.Filename, raw)
@@ -134,7 +134,7 @@ func (s *Server) uploadKnowledge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if strings.TrimSpace(text) == "" {
-		writeErr(w, 400, "文档内容为空或无法抽取文本")
+		writeErr(w, 400, "Document content is empty or text could not be extracted")
 		return
 	}
 	scope := r.FormValue("scope")
@@ -142,7 +142,7 @@ func (s *Server) uploadKnowledge(w http.ResponseWriter, r *http.Request) {
 	// A task-scoped upload MUST name a task — otherwise it silently lands as an
 	// orphan (scope=task, task_id=NULL) that reads back as global. Reject instead.
 	if scope == "task" && taskID <= 0 {
-		writeErr(w, 400, "任务知识需指定所属任务：请选择要归属的运行任务，或到该任务详情页的「知识」标签页上传")
+		writeErr(w, 400, "Task knowledge must specify an owning task: select a running task to attribute it to, or upload from the \"Knowledge\" tab on that task's detail page")
 		return
 	}
 	doc := &db.KnowledgeDoc{
@@ -159,7 +159,7 @@ func (s *Server) uploadKnowledge(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := s.m.pg.AddKnowledgeDoc(doc)
 	if err != nil {
-		writeErr(w, 500, "保存失败: "+err.Error())
+		writeErr(w, 500, "Save failed: "+err.Error())
 		return
 	}
 	go s.indexKnowledgeAsync(id)
@@ -186,10 +186,10 @@ func (s *Server) searchKnowledge(w http.ResponseWriter, r *http.Request) {
 		TopK   int    `json:"top_k"`
 	}
 	if err := decode(r, &b); err != nil {
-		writeErr(w, 400, "请求格式错误")
+		writeErr(w, 400, "Malformed request")
 		return
 	}
-	hits, mode, err := s.kb().SearchAndLog(s.ctx, b.Query, b.TaskID, b.TopK, "手动检索")
+	hits, mode, err := s.kb().SearchAndLog(s.ctx, b.Query, b.TaskID, b.TopK, "Manual search")
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
@@ -238,7 +238,7 @@ func (s *Server) saveKnowledgeConfig(w http.ResponseWriter, r *http.Request) {
 		Dim     int    `json:"dim"`
 	}
 	if err := decode(r, &b); err != nil {
-		writeErr(w, 400, "请求格式错误")
+		writeErr(w, 400, "Malformed request")
 		return
 	}
 	if err := s.m.pg.SaveKnowledgeConfig(b.Enabled, b.BaseURL, b.Model, b.APIKey, b.Dim); err != nil {
@@ -252,7 +252,7 @@ func (s *Server) saveKnowledgeConfig(w http.ResponseWriter, r *http.Request) {
 func (s *Server) testKnowledgeEmbedder(w http.ResponseWriter, r *http.Request) {
 	dim, err := s.kb().TestEmbedder(s.ctx)
 	if err != nil {
-		writeErr(w, 400, "连通失败: "+err.Error())
+		writeErr(w, 400, "Connectivity test failed: "+err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]any{"ok": true, "dim": dim})

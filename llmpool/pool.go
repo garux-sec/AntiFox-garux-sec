@@ -40,7 +40,7 @@ type Member struct {
 const RankActive = int(^uint(0)>>1) - 1
 
 // ErrExhausted is returned when every member of the chain failed.
-var ErrExhausted = errors.New("LLM 轮询：所有配置均不可用")
+var ErrExhausted = errors.New("LLM pool: all configurations are unavailable")
 
 // Pool is an llm.Provider that fails over across an ordered chain of members.
 // It is safe for concurrent use: members are immutable after construction and

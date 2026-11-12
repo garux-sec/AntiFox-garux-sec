@@ -24,7 +24,7 @@ func (s *Server) extractFindings(w http.ResponseWriter, r *http.Request) {
 	expID := t.Store.ID()
 	transcript := s.m.pg.ExplorationSynthesis(expID, 48000)
 	if strings.TrimSpace(transcript) == "" {
-		writeErr(w, 400, "该任务暂无可分析的会话记录")
+		writeErr(w, 400, "this task has no session records to analyze")
 		return
 	}
 
@@ -32,7 +32,7 @@ func (s *Server) extractFindings(w http.ResponseWriter, r *http.Request) {
 	// 用 record_fact 写回、却没升级成 finding 的暴露/信息泄露，让"梳理"能把它们提出来。
 	if facts, ferr := t.Store.ListByKind(db.KindFact, 200); ferr == nil && len(facts) > 0 {
 		var fb strings.Builder
-		fb.WriteString("\n\n【探索图已记录的事实（可能含未升级为发现的暴露/攻击面）】\n")
+		fb.WriteString("\n\n[Facts already recorded in the exploration graph (may include exposure/attack surface not yet promoted to findings)]\n")
 		for _, n := range facts {
 			var p struct {
 				Summary string `json:"summary"`
@@ -49,7 +49,7 @@ func (s *Server) extractFindings(w http.ResponseWriter, r *http.Request) {
 				if rr := []rune(d); len(rr) > 200 {
 					d = string(rr[:200])
 				}
-				fb.WriteString("：")
+				fb.WriteString(": ")
 				fb.WriteString(d)
 			}
 			fb.WriteString("\n")
@@ -73,7 +73,7 @@ func (s *Server) extractFindings(w http.ResponseWriter, r *http.Request) {
 
 	extracted, err := report.ExtractFindings(s.ctx, s.m.pg, transcript, labels)
 	if err != nil {
-		writeErr(w, 502, "AI 提取失败："+err.Error())
+		writeErr(w, 502, "AI extraction failed: "+err.Error())
 		return
 	}
 
@@ -90,16 +90,16 @@ func (s *Server) extractFindings(w http.ResponseWriter, r *http.Request) {
 		}
 		payload := map[string]any{
 			"vulnclass": e.VulnClass, "severity": normalizeSeverity(e.Severity), "summary": e.Summary,
-			"evidence": map[string]any{"by": "补录", "poc": e.Evidence},
+			"evidence": map[string]any{"by": "backfill", "poc": e.Evidence},
 		}
-		id, aerr := t.Store.AddNode(db.KindFinding, payload, 9, "confirmed", "补录", nil)
+		id, aerr := t.Store.AddNode(db.KindFinding, payload, 9, "confirmed", "backfill", nil)
 		if aerr != nil {
 			continue
 		}
 		if begin > 0 {
 			_ = t.Store.Link(begin, db.RelYields, id) // connect into the graph
 		}
-		_, _ = t.Store.AddStandaloneFinding(taskID, id, e.VulnClass, normalizeSeverity(e.Severity), e.Summary, e.Evidence, "补录", nil)
+		_, _ = t.Store.AddStandaloneFinding(taskID, id, e.VulnClass, normalizeSeverity(e.Severity), e.Summary, e.Evidence, "backfill", nil)
 		existingKeys = append(existingKeys, key)
 		created++
 	}

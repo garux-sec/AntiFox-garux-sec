@@ -27,16 +27,16 @@ func connectMCP(ctx context.Context, m *db.MCPServer) (mcpClient, error) {
 	switch m.Transport {
 	case "stdio":
 		if m.Command == "" {
-			return nil, fmt.Errorf("stdio 传输缺少命令")
+			return nil, fmt.Errorf("stdio transport is missing a command")
 		}
 		return mcp.NewStdioClient(ctx, m.Name, m.Command, jsonStrMap(m.Env), jsonStrSlice(m.Args)...)
 	case "http":
 		if m.URL == "" {
-			return nil, fmt.Errorf("http 传输缺少 URL")
+			return nil, fmt.Errorf("http transport is missing a URL")
 		}
 		return mcphttp.New(ctx, m.Name, m.URL, jsonStrMap(m.Headers))
 	default:
-		return nil, fmt.Errorf("未知传输方式 %q", m.Transport)
+		return nil, fmt.Errorf("unknown transport %q", m.Transport)
 	}
 }
 
