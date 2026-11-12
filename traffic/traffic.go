@@ -1239,14 +1239,14 @@ func (t *Traffic) Tools() []actool.CoreTool {
 
 	search := actool.Build(actool.Spec{
 		Name:        "traffic_search",
-		Description: "查询记录代理已抓取的目标流量（必须指定 host，可再按 URL 子串过滤）。仅返回极轻量索引(id/method/url/status/resp_len)，不含任何响应内容。默认只返回 3 条、每页最多 10 条；结果多时用 page 翻页（page=0 起）；要看某条的请求/响应原文用 traffic_get(id)。回看已访问资源、找端点先用它，避免重复 curl 同一 URL。",
+		Description: "Query target traffic already captured by the proxy (host is required; can be further filtered by a URL substring). Returns only an ultra-lightweight index (id/method/url/status/resp_len) with no response content. Returns 3 entries by default, 10 per page at most; when there are many results, page through them (page starts at 0); to view the raw request/response of an entry, use traffic_get(id). Use this first to review already-visited resources and find endpoints, avoiding repeated curls of the same URL.",
 		Schema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"host":     map[string]any{"type": "string", "description": "按主机过滤（必填，如 '192.168.1.100:8082'）"},
-				"contains": map[string]any{"type": "string", "description": "URL 子串过滤（可选，如 'api' / 'login'）"},
-				"limit":    map[string]any{"type": "integer", "description": "每页条数，默认 3，最大 10"},
-				"page":     map[string]any{"type": "integer", "description": "页码，从 0 开始，默认 0（按 ts 倒序分页）"},
+				"host":     map[string]any{"type": "string", "description": "Filter by host (required, e.g. '192.168.1.100:8082')"},
+				"contains": map[string]any{"type": "string", "description": "Filter by URL substring (optional, e.g. 'api' / 'login')"},
+				"limit":    map[string]any{"type": "integer", "description": "Entries per page, default 3, max 10"},
+				"page":     map[string]any{"type": "integer", "description": "Page number, starting at 0, default 0 (paginated by ts descending)"},
 			},
 			"required": []any{"host"},
 		},
@@ -1260,14 +1260,14 @@ func (t *Traffic) Tools() []actool.CoreTool {
 			}
 			_ = json.Unmarshal(in, &a)
 			if strings.TrimSpace(a.Host) == "" {
-				return actool.Errorf("host 为必填参数：请指定要查询的主机（如 '192.168.1.100:8082'），避免全库扫描。"), nil
+				return actool.Errorf("host is a required parameter: specify the host to query (e.g. '192.168.1.100:8082') to avoid a full-database scan."), nil
 			}
 			rows, err := t.query(a.Host, a.Contains, a.Page, a.Limit)
 			if err != nil {
 				return actool.Errorf(err.Error()), nil
 			}
 			if len(rows) == 0 {
-				return actool.Text("无匹配流量。"), nil
+				return actool.Text("No matching traffic."), nil
 			}
 			// 精简为最小索引：仅保留定位所需字段 + 响应码/长度，不带任何响应内容。
 			type liteRow struct {
@@ -1288,10 +1288,10 @@ func (t *Traffic) Tools() []actool.CoreTool {
 
 	get := actool.Build(actool.Spec{
 		Name:        "traffic_get",
-		Description: "按 id 取一条已抓流量的请求/响应原文（过大会截断）。配合 traffic_search 用，避免重复 curl。",
+		Description: "Fetch the raw request/response of one captured traffic entry by id (truncated if too large). Use together with traffic_search to avoid repeated curls.",
 		Schema: map[string]any{
 			"type":       "object",
-			"properties": map[string]any{"id": map[string]any{"type": "string", "description": "traffic_search 返回的 id"}},
+			"properties": map[string]any{"id": map[string]any{"type": "string", "description": "The id returned by traffic_search"}},
 			"required":   []any{"id"},
 		},
 		ReadOnly:    ro,
@@ -1318,5 +1318,5 @@ func clip(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max] + fmt.Sprintf("\n... [截断，共 %d 字节；完整在流量文件树] ...", len(s))
+	return s[:max] + fmt.Sprintf("\n... [truncated, %d bytes total; full content in the traffic file tree] ...", len(s))
 }
