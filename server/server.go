@@ -604,6 +604,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/llm", s.getLLM)
 	mux.HandleFunc("POST /api/llm", s.setLLM)
 	mux.HandleFunc("POST /api/llm/test", s.testLLM)
+	mux.HandleFunc("POST /api/llm/models", s.listLLMModels)
 
 	// asset system
 	mux.HandleFunc("GET /api/assets", s.listAssets)
@@ -1135,6 +1136,40 @@ func (s *Server) testLLM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]any{"ok": true, "latency_ms": lat.Milliseconds(), "model": cfg.Model})
+}
+
+// listLLMModels fetches the model ids the configured provider exposes, so the UI
+// can offer a "Fetch Models" picker after a key is entered. Key resolution mirrors
+// testLLM: form key > the named profile's stored key > the global config key.
+func (s *Server) listLLMModels(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Provider  string `json:"provider"`
+		BaseURL   string `json:"base_url"`
+		Proxy     string `json:"proxy"`
+		APIKey    string `json:"api_key"`
+		ProfileID *int64 `json:"profile_id"` // blank key → use this profile's stored key
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	cfg := agent.ConfigFrom(req.Provider, "", req.BaseURL, req.APIKey, req.Proxy)
+	if cfg.APIKey == "" && req.ProfileID != nil {
+		if p, err := s.m.pg.ProfileByID(*req.ProfileID); err == nil && p != nil {
+			cfg.APIKey = p.APIKey
+		}
+	}
+	if cfg.APIKey == "" {
+		s.cfgMu.Lock()
+		cfg.APIKey = s.llmCfg.APIKey
+		s.cfgMu.Unlock()
+	}
+	models, err := agent.ListModels(r.Context(), cfg)
+	if err != nil {
+		writeJSON(w, 200, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, 200, map[string]any{"ok": true, "models": models})
 }
 
 type createTaskReq struct {

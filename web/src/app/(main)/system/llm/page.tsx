@@ -293,6 +293,8 @@ export default function LLMPage() {
   const [thinkMode, setThinkMode] = React.useState<ThinkMode>("none");
   const [effort, setEffort] = React.useState("high");
   const [testing, setTesting] = React.useState(false);
+  const [fetchedModels, setFetchedModels] = React.useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = React.useState(false);
 
   const [pool, setPool] = React.useState<LLMPoolStatus | null>(null);
   const [poolBusy, setPoolBusy] = React.useState(false);
@@ -387,6 +389,25 @@ export default function LLMPage() {
     setApiKey("");
     setKeyHint(selected.api_key_hint ?? "");
   }, [selected]);
+
+  async function fetchModels() {
+    if (fetchingModels) return;
+    setFetchingModels(true);
+    try {
+      const r = await api.fetchLLMModels(format, baseUrl, apiKey, proxy, selectedId ? Number(selectedId) : undefined);
+      if (r.ok) {
+        const list = r.models ?? [];
+        setFetchedModels(list);
+        if (!list.length) toast.message(t("llm.toast.modelsEmpty"));
+      } else {
+        toast.error(t("llm.toast.modelsFailed", { error: r.error ?? t("llm.unknown") }));
+      }
+    } catch (e) {
+      toast.error(t("llm.toast.modelsFailed", { error: (e as Error).message }));
+    } finally {
+      setFetchingModels(false);
+    }
+  }
 
   async function testConnection() {
     if (testing) return;
@@ -650,13 +671,37 @@ export default function LLMPage() {
 
                 <div className="grid gap-2">
                   <Label htmlFor="model">{t("llm.model")}</Label>
-                  <Input
-                    id="model"
-                    className="font-mono"
-                    placeholder="claude-opus-4-8"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="model"
+                      className="font-mono"
+                      placeholder="claude-opus-4-8"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                    />
+                    <Button type="button" variant="outline" onClick={fetchModels} disabled={fetchingModels} className="shrink-0">
+                      {fetchingModels ? <Loader2Icon className="size-4 animate-spin" /> : t("llm.fetchModels")}
+                    </Button>
+                  </div>
+                  {fetchedModels.length > 0 && (
+                    <div className="mt-1 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-md border bg-muted/20 p-2">
+                      {fetchedModels.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setModel(m)}
+                          className={cn(
+                            "rounded px-2 py-0.5 font-mono text-[11px] transition-colors",
+                            m === model
+                              ? "bg-foreground text-background"
+                              : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                          )}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-2">

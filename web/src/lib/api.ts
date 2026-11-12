@@ -394,6 +394,22 @@ export const api = {
   getLLM: () => get<{ configured: boolean; provider: string; model: string; base_url: string; proxy?: string; key_set: boolean; rate_per_second?: number; rate_per_minute?: number; context_window_k?: number; reasoning_effort?: string }>("/llm"),
   setLLM: (provider: string, model: string, base_url: string, api_key: string, rate_per_second = 0, rate_per_minute = 0, proxy = "", context_window_k = 0) =>
     post("/llm", { provider, model, base_url, proxy, api_key, rate_per_second, rate_per_minute, context_window_k }),
+  // Fetch the model ids the provider exposes (OpenAI/Anthropic /models endpoint),
+  // so the UI can offer a picker. Blank api_key falls back to the profile's stored key.
+  fetchLLMModels: (
+    provider: string,
+    base_url: string,
+    api_key: string,
+    proxy = "",
+    profile_id?: number,
+  ) =>
+    post<{ ok: boolean; error?: string; models?: string[] }>("/llm/models", {
+      provider,
+      base_url,
+      proxy,
+      api_key,
+      profile_id,
+    }),
   testLLM: (
     provider: string,
     model: string,

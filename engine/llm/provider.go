@@ -2,12 +2,16 @@ package llm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"iter"
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strings"
+	"time"
 )
 
 // StreamEventType enumerates the normalized streaming events every adapter
@@ -174,6 +178,101 @@ func defaultHTTPClient(proxy string) (*http.Client, error) {
 	}
 	tr.Proxy = http.ProxyURL(u)
 	return &http.Client{Transport: tr}, nil
+}
+
+// ListModels fetches the available model ids from the provider's models endpoint
+// (OpenAI-compatible: GET {base}/models; Anthropic: GET {base}/v1/models), using
+// the same base-url defaults and proxy handling as NewProvider. It is a config
+// helper for a UI model picker — it builds no provider and makes no completion.
+// The returned ids are sorted. A non-200 response is surfaced as an error carrying
+// the provider's own message (so auth/endpoint problems are visible to the user).
+func ListModels(ctx context.Context, cfg Config) ([]string, error) {
+	client := cfg.HTTPClient
+	if client == nil {
+		c, err := defaultHTTPClient(cfg.Proxy)
+		if err != nil {
+			return nil, err
+		}
+		client = c
+	}
+	var endpoint string
+	setAuth := func(*http.Request) {}
+	switch cfg.Format {
+	case FormatAnthropic:
+		base := cfg.BaseURL
+		if base == "" {
+			base = envOr("ANTHROPIC_BASE_URL", "https://api.anthropic.com")
+		}
+		key := cfg.APIKey
+		if key == "" {
+			key = os.Getenv("ANTHROPIC_API_KEY")
+		}
+		ver := cfg.APIVersion
+		if ver == "" {
+			ver = "2023-06-01"
+		}
+		endpoint = strings.TrimRight(base, "/") + "/v1/models?limit=1000"
+		setAuth = func(r *http.Request) {
+			r.Header.Set("x-api-key", key)
+			r.Header.Set("anthropic-version", ver)
+		}
+	case FormatOpenAI, FormatOpenAIResponses:
+		base := cfg.BaseURL
+		if base == "" {
+			base = envOr("OPENAI_BASE_URL", "https://api.openai.com/v1")
+		}
+		key := cfg.APIKey
+		if key == "" {
+			key = os.Getenv("OPENAI_API_KEY")
+		}
+		endpoint = strings.TrimRight(base, "/") + "/models"
+		setAuth = func(r *http.Request) {
+			if key != "" {
+				r.Header.Set("Authorization", "Bearer "+key)
+			}
+		}
+	default:
+		return nil, fmt.Errorf("llm: unknown format %q (use anthropic, openai or openai-responses)", cfg.Format)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	setAuth(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode != http.StatusOK {
+		msg := strings.TrimSpace(string(body))
+		if len(msg) > 300 {
+			msg = msg[:300]
+		}
+		return nil, fmt.Errorf("models endpoint returned HTTP %d: %s", resp.StatusCode, msg)
+	}
+	// OpenAI + Anthropic both return {"data":[{"id":"..."}]}.
+	var payload struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("could not parse models response: %w", err)
+	}
+	ids := make([]string, 0, len(payload.Data))
+	for _, m := range payload.Data {
+		if strings.TrimSpace(m.ID) != "" {
+			ids = append(ids, m.ID)
+		}
+	}
+	sort.Strings(ids)
+	return ids, nil
 }
 
 func envOr(key, def string) string {

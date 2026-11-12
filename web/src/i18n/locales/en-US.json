@@ -1059,8 +1059,11 @@
       "activateFailed": "Activate failed: {{msg}}",
       "cannotDeleteActive": "Cannot delete the currently active Profile",
       "deleted": "Profile deleted: {{name}}",
-      "deleteFailed": "Delete failed: {{msg}}"
-    }
+      "deleteFailed": "Delete failed: {{msg}}",
+      "modelsEmpty": "No models returned by the provider",
+      "modelsFailed": "Failed to fetch models: {{error}}"
+    },
+    "fetchModels": "Fetch Models"
   },
   "rbac": {
     "title": "User Management",

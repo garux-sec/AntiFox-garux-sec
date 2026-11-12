@@ -1059,8 +1059,11 @@
       "activateFailed": "激活失败：{{msg}}",
       "cannotDeleteActive": "无法删除当前激活的 Profile",
       "deleted": "已删除 Profile：{{name}}",
-      "deleteFailed": "删除失败：{{msg}}"
-    }
+      "deleteFailed": "删除失败：{{msg}}",
+      "modelsEmpty": "该提供方未返回任何模型",
+      "modelsFailed": "获取模型失败：{{error}}"
+    },
+    "fetchModels": "获取模型"
   },
   "rbac": {
     "title": "用户管理",

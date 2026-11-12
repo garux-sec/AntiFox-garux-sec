@@ -246,6 +246,18 @@ func sessionHeaderClient(proxy, headerKey string) (*http.Client, error) {
 	return &http.Client{Transport: sessionHeaderTransport{base: tr, key: strings.TrimSpace(headerKey)}}, nil
 }
 
+// ListModels fetches the model ids the provider exposes at its models endpoint,
+// using this config's format/base-url/key/proxy. Powers the UI "Fetch Models"
+// picker; it builds no provider and makes no completion.
+func ListModels(ctx context.Context, c Config) ([]string, error) {
+	return llm.ListModels(ctx, llm.Config{
+		Format:  c.Format,
+		BaseURL: c.BaseURL,
+		APIKey:  c.APIKey,
+		Proxy:   c.Proxy,
+	})
+}
+
 // TestConnection makes a minimal real completion to verify the provider/model/
 // endpoint/key actually work. Returns the round-trip latency.
 func TestConnection(ctx context.Context, c Config) (time.Duration, error) {

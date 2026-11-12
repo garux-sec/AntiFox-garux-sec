@@ -1059,8 +1059,11 @@
       "activateFailed": "啟用失敗：{{msg}}",
       "cannotDeleteActive": "無法刪除目前啟用的 Profile",
       "deleted": "已刪除 Profile：{{name}}",
-      "deleteFailed": "刪除失敗：{{msg}}"
-    }
+      "deleteFailed": "刪除失敗：{{msg}}",
+      "modelsEmpty": "該提供方未回傳任何模型",
+      "modelsFailed": "取得模型失敗：{{error}}"
+    },
+    "fetchModels": "取得模型"
   },
   "rbac": {
     "title": "使用者管理",
