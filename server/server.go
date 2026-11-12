@@ -1821,7 +1821,7 @@ func (s *Server) getSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) settingsPayload() map[string]any {
-	on, backend, braveKey, tavilyKey, proxy := s.m.WebSearch()
+	on, backend, braveKey, tavilyKey, searxngURL, proxy := s.m.WebSearch()
 	pyStored, _, _ := s.m.pg.GetSetting(settingPythonInterp)
 	return map[string]any{
 		"traffic_capture":     s.m.TrafficEnabled(),
@@ -1829,6 +1829,7 @@ func (s *Server) settingsPayload() map[string]any {
 		"web_search_backend":  backend,
 		"brave_key_set":       strings.TrimSpace(braveKey) != "",
 		"tavily_key_set":      strings.TrimSpace(tavilyKey) != "",
+		"searxng_url":         searxngURL,                  // SearXNG instance base URL (for the "searxng" backend)
 		"web_search_proxy":    proxy,                       // 独立出口代理(http/https/socks5)，空=直连
 		"global_proxy":        s.m.GlobalProxy(),           // 全局出口代理：agent 目标流量经它出网(作 MITM 上游)，空=直连
 		"python_interpreter":  strings.TrimSpace(pyStored), // 用户/自动设的值(空=用运行时检测)
@@ -1863,6 +1864,7 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		WebSearchBackend *string `json:"web_search_backend"`
 		BraveKey         *string `json:"brave_search_api_key"`
 		TavilyKey        *string `json:"tavily_search_api_key"`
+		SearxngURL       *string `json:"searxng_url"`        // SearXNG 实例地址；null=不改，""=清空
 		WebSearchProxy   *string `json:"web_search_proxy"`   // 独立出口代理(http/https/socks5)；null=不改，""=清空
 		GlobalProxy      *string `json:"global_proxy"`       // 全局出口代理(http/https/socks5)；null=不改，""=清空(直连)
 		PythonInterp     *string  `json:"python_interpreter"` // 自定义脚本工具的 python 解释器路径
@@ -1905,16 +1907,16 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		changed = true
 	}
-	if req.WebSearchEnabled != nil || req.WebSearchBackend != nil || req.BraveKey != nil || req.TavilyKey != nil || req.WebSearchProxy != nil {
+	if req.WebSearchEnabled != nil || req.WebSearchBackend != nil || req.BraveKey != nil || req.TavilyKey != nil || req.SearxngURL != nil || req.WebSearchProxy != nil {
 		// Fill unspecified fields from current state so a partial PUT doesn't reset them.
-		on, backend, _, _, _ := s.m.WebSearch()
+		on, backend, _, _, _, _ := s.m.WebSearch()
 		if req.WebSearchEnabled != nil {
 			on = *req.WebSearchEnabled
 		}
 		if req.WebSearchBackend != nil {
 			backend = *req.WebSearchBackend
 		}
-		if err := s.m.SetWebSearch(on, backend, req.BraveKey, req.TavilyKey, req.WebSearchProxy); err != nil {
+		if err := s.m.SetWebSearch(on, backend, req.BraveKey, req.TavilyKey, req.SearxngURL, req.WebSearchProxy); err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}
@@ -2013,17 +2015,18 @@ func (s *Server) testGlobalProxy(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) testWebSearch(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Backend   string `json:"web_search_backend"`
-		Proxy     string `json:"web_search_proxy"`
-		BraveKey  string `json:"brave_search_api_key"`
-		TavilyKey string `json:"tavily_search_api_key"`
+		Backend    string `json:"web_search_backend"`
+		Proxy      string `json:"web_search_proxy"`
+		BraveKey   string `json:"brave_search_api_key"`
+		TavilyKey  string `json:"tavily_search_api_key"`
+		SearxngURL string `json:"searxng_url"`
 	}
 	// Empty body is fine — fall back entirely to the saved config below.
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil && err != io.EOF {
 		writeErr(w, 400, err.Error())
 		return
 	}
-	_, backend, storedBraveKey, storedTavilyKey, _ := s.m.WebSearch()
+	_, backend, storedBraveKey, storedTavilyKey, storedSearxngURL, _ := s.m.WebSearch()
 	if strings.TrimSpace(req.Backend) != "" {
 		backend = req.Backend
 	}
@@ -2039,10 +2042,15 @@ func (s *Server) testWebSearch(w http.ResponseWriter, r *http.Request) {
 	if strings.TrimSpace(req.TavilyKey) != "" {
 		tavilyKey = req.TavilyKey
 	}
+	// SearXNG URL is not secret, so the form may send it directly (empty = use stored).
+	searxngURL := storedSearxngURL
+	if strings.TrimSpace(req.SearxngURL) != "" {
+		searxngURL = req.SearxngURL
+	}
 	// Hard cap so a slow/blocked proxy can't hang the request.
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	results, err := actool.WebSearchProbe(ctx, actool.WebSearchConfig{Backend: backend, BraveAPIKey: braveKey, TavilyAPIKey: tavilyKey, Proxy: proxy}, "test", 3)
+	results, err := actool.WebSearchProbe(ctx, actool.WebSearchConfig{Backend: backend, BraveAPIKey: braveKey, TavilyAPIKey: tavilyKey, SearxngURL: searxngURL, Proxy: proxy}, "test", 3)
 	if err != nil {
 		writeJSON(w, 200, map[string]any{"ok": false, "error": err.Error(), "backend": backend})
 		return

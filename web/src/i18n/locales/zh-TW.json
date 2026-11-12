@@ -1251,7 +1251,13 @@
       "braveSaved": "已儲存 Brave API Key",
       "tavilySaved": "已儲存 Tavily API Key",
       "proxySaved": "已儲存出口代理",
-      "proxyCleared": "已清除出口代理（改為直連）"
+      "proxyCleared": "已清除出口代理（改為直連）",
+      "sourceSearxng": "SearXNG(自建)",
+      "searxngUrlLabel": "SearXNG 實例位址",
+      "searxngNeedsUrl": "請填寫 SearXNG 實例位址，否則聯網搜尋不會啟用。",
+      "searxngHint": "SearXNG 實例的基礎位址(如 http://searxng:8080)。實例需啟用 JSON 格式 — 在 settings.yml 的 search.formats 中加入 \"json\"。無需 API Key。",
+      "searxngSaved": "SearXNG 位址已儲存",
+      "searxngCleared": "SearXNG 位址已清空"
     },
     "globalProxy": {
       "title": "全域出口代理",

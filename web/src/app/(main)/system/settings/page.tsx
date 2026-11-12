@@ -26,6 +26,8 @@ export default function SystemSettingsPage() {
   const [tavilyKeySet, setTavilyKeySet] = React.useState(false);
   const [tavilyKeyInput, setTavilyKeyInput] = React.useState("");
   const [savingTavilyKey, setSavingTavilyKey] = React.useState(false);
+  const [searxngUrl, setSearxngUrl] = React.useState("");
+  const [savingSearxng, setSavingSearxng] = React.useState(false);
   const [proxyInput, setProxyInput] = React.useState("");
   const [savingProxy, setSavingProxy] = React.useState(false);
   const [testing, setTesting] = React.useState(false);
@@ -47,6 +49,7 @@ export default function SystemSettingsPage() {
     setBackend(s.web_search_backend || "ddgs");
     setBraveKeySet(!!s.brave_key_set);
     setTavilyKeySet(!!s.tavily_key_set);
+    setSearxngUrl(s.searxng_url || "");
     setProxyInput(s.web_search_proxy || "");
     setGlobalProxy(s.global_proxy || "");
     setPyInterp(s.python_interpreter || "");
@@ -191,6 +194,18 @@ export default function SystemSettingsPage() {
       .finally(() => setSavingTavilyKey(false));
   };
 
+  const saveSearxngUrl = () => {
+    setSavingSearxng(true);
+    api
+      .setSettings({ searxng_url: searxngUrl.trim() })
+      .then((s) => {
+        apply(s);
+        toast.success(searxngUrl.trim() ? t("settings.webSearch.searxngSaved") : t("settings.webSearch.searxngCleared"));
+      })
+      .catch((e) => toast.error(t("settings.saveFailed", { msg: (e as Error).message })))
+      .finally(() => setSavingSearxng(false));
+  };
+
   const saveProxy = () => {
     setSavingProxy(true);
     api
@@ -213,6 +228,7 @@ export default function SystemSettingsPage() {
         web_search_proxy: proxyInput.trim(),
         brave_search_api_key: braveKeyInput,
         tavily_search_api_key: tavilyKeyInput,
+        searxng_url: searxngUrl.trim(),
       })
       .then((r) => {
         if (r.ok) toast.success(t("settings.webSearch.testOk", { backend: r.backend, count: r.count }));
@@ -336,6 +352,7 @@ export default function SystemSettingsPage() {
                   <SelectItem value="ddgs">{t("settings.webSearch.sourceDdgs")}</SelectItem>
                   <SelectItem value="brave-free">{t("settings.webSearch.sourceBrave")}</SelectItem>
                   <SelectItem value="tavily">{t("settings.webSearch.sourceTavily")}</SelectItem>
+                  <SelectItem value="searxng">{t("settings.webSearch.sourceSearxng")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -408,6 +425,36 @@ export default function SystemSettingsPage() {
               <p className="text-muted-foreground text-xs">
                 {t("settings.webSearch.tavilyHint")}
               </p>
+            </div>
+          )}
+
+          {webSearch && backend === "searxng" && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="searxng-url" className="text-sm font-normal text-muted-foreground">
+                {t("settings.webSearch.searxngUrlLabel")}
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="searxng-url"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="http://searxng:8080"
+                  value={searxngUrl}
+                  disabled={!loaded || savingSearxng}
+                  onChange={(e) => setSearxngUrl(e.target.value)}
+                />
+                <Button
+                  type="button"
+                  onClick={saveSearxngUrl}
+                  disabled={!loaded || savingSearxng}
+                >
+                  {t("common.save")}
+                </Button>
+              </div>
+              {webSearch && backend === "searxng" && searxngUrl.trim() === "" && (
+                <p className="text-xs text-amber-500">{t("settings.webSearch.searxngNeedsUrl")}</p>
+              )}
+              <p className="text-muted-foreground text-xs">{t("settings.webSearch.searxngHint")}</p>
             </div>
           )}
 

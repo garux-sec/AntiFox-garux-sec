@@ -428,6 +428,8 @@ export interface Settings {
   // write-only: only sent on PUT to store/clear the key.
   brave_search_api_key?: string;
   tavily_search_api_key?: string;
+  // SearXNG instance base URL (for the "searxng" backend). Returned on GET; sent on PUT to set/clear.
+  searxng_url?: string;
   // 独立出口代理(http/https/socks5)，用于访问搜索端点；与记录流量的 MITM 代理无关。空=直连。
   web_search_proxy?: string;
   // 全局出口代理(http/https/socks5)：所有 agent 目标流量经它出网(作 MITM 上游)，隐藏源 IP。空=直连。

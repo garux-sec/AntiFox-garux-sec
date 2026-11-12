@@ -93,6 +93,7 @@ func (m *MainAgent) Chat(ctx context.Context, taskID int64, as *db.AssetStore, t
 		WebSearchBackend:   m.webSearch.Backend,
 		BraveSearchAPIKey:  m.webSearch.BraveKey,
 		TavilySearchAPIKey: m.webSearch.TavilyKey,
+		SearxngURL:         m.webSearch.SearxngURL,
 		WebSearchProxy:     m.webSearch.Proxy,
 		BashEnv:           proxyEnv(m.proxyAddr, m.proxyCACert), // Bash 子命令默认走代理+信任 CA
 		MaxTurns:          m.maxTurns,                           // 0 = unlimited (configurable in agent management)

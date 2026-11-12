@@ -42,6 +42,10 @@ type WebSearchConfig struct {
 	// TavilyAPIKey authenticates the "tavily" backend. Required (and only
 	// used) when Backend == "tavily".
 	TavilyAPIKey string
+	// SearxngURL is the base URL of a SearXNG instance (e.g. http://searxng:8080).
+	// Required (and only used) when Backend == "searxng". The instance must have the
+	// JSON output format enabled (search.formats includes "json").
+	SearxngURL string
 	// Proxy, when set, routes search requests through this http(s) proxy URL —
 	// useful when the search endpoint is only reachable via a proxy. Empty = direct.
 	Proxy string
@@ -110,8 +114,14 @@ func newSearchProvider(cfg WebSearchConfig) (searchProvider, error) {
 			return nil, fmt.Errorf("web_search: backend %q requires a Tavily API key", backend)
 		}
 		return &tavilyProvider{apiKey: key, client: client, endpoint: tavilyEndpoint}, nil
+	case "searxng":
+		base := strings.TrimRight(strings.TrimSpace(cfg.SearxngURL), "/")
+		if base == "" {
+			return nil, fmt.Errorf("web_search: backend %q requires a SearXNG instance URL", backend)
+		}
+		return &searxngProvider{baseURL: base, client: client}, nil
 	default:
-		return nil, fmt.Errorf("web_search: unknown backend %q (want \"ddgs\", \"brave-free\", or \"tavily\")", backend)
+		return nil, fmt.Errorf("web_search: unknown backend %q (want \"ddgs\", \"brave-free\", \"tavily\", or \"searxng\")", backend)
 	}
 }
 
@@ -390,6 +400,69 @@ func (p *tavilyProvider) Search(ctx context.Context, query string, limit int) ([
 	for _, r := range payload.Results {
 		if len(out) >= limit {
 			break
+		}
+		out = append(out, SearchResult{
+			Title:       r.Title,
+			URL:         r.URL,
+			Description: r.Content,
+			Position:    len(out) + 1,
+		})
+	}
+	return out, nil
+}
+
+// ─── SearXNG (self-hosted metasearch) ────────────────────────────────────────
+
+// searxngProvider queries a self-hosted SearXNG instance via its JSON API
+// (GET {base}/search?q=…&format=json). The instance must enable the JSON output
+// format (search.formats includes "json" in settings.yml) — otherwise it answers
+// 403/HTML and the call fails with a clear hint.
+type searxngProvider struct {
+	baseURL string // already trimmed of a trailing slash
+	client  *http.Client
+}
+
+func (p *searxngProvider) Name() string { return "searxng" }
+
+func (p *searxngProvider) Search(ctx context.Context, query string, limit int) ([]SearchResult, error) {
+	q := url.Values{}
+	q.Set("q", query)
+	q.Set("format", "json")
+	endpoint := p.baseURL + "/search?" + q.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("SearXNG returned HTTP 403 — enable the JSON format on the instance (add \"json\" to search.formats in settings.yml)")
+		}
+		return nil, fmt.Errorf("SearXNG returned HTTP %d", resp.StatusCode)
+	}
+	var payload struct {
+		Results []struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Content string `json:"content"`
+		} `json:"results"`
+	}
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, maxFetchBytes))
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return nil, fmt.Errorf("could not parse SearXNG response (is the JSON format enabled?): %w", err)
+	}
+	var out []SearchResult
+	for _, r := range payload.Results {
+		if len(out) >= limit {
+			break
+		}
+		if strings.TrimSpace(r.URL) == "" {
+			continue
 		}
 		out = append(out, SearchResult{
 			Title:       r.Title,

@@ -99,6 +99,9 @@ type Options struct {
 	// TavilySearchAPIKey authenticates the "tavily" backend. Required only when
 	// WebSearchBackend == "tavily".
 	TavilySearchAPIKey string
+	// SearxngURL is the SearXNG instance base URL. Required only when
+	// WebSearchBackend == "searxng".
+	SearxngURL string
 	// WebSearchProxy, when set, routes web_search requests through this http(s)
 	// proxy URL — useful when the search endpoint is only reachable via a proxy.
 	WebSearchProxy string
@@ -253,7 +256,7 @@ func NewSession(opts Options) *Session {
 		// A misconfigured backend (unknown name, or brave-free without a key)
 		// drops the tool rather than failing the whole session — the rest of the
 		// agent stays usable and the missing tool surfaces the misconfig.
-		if ws, err := tool.NewWebSearch(tool.WebSearchConfig{Backend: opts.WebSearchBackend, BraveAPIKey: opts.BraveSearchAPIKey, TavilyAPIKey: opts.TavilySearchAPIKey, Proxy: opts.WebSearchProxy, CACert: opts.WebSearchCACert, InsecureTLS: opts.WebSearchInsecureTLS}); err == nil {
+		if ws, err := tool.NewWebSearch(tool.WebSearchConfig{Backend: opts.WebSearchBackend, BraveAPIKey: opts.BraveSearchAPIKey, TavilyAPIKey: opts.TavilySearchAPIKey, SearxngURL: opts.SearxngURL, Proxy: opts.WebSearchProxy, CACert: opts.WebSearchCACert, InsecureTLS: opts.WebSearchInsecureTLS}); err == nil {
 			tools = append(tools, ws)
 		}
 	}

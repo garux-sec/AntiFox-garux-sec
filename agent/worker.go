@@ -30,11 +30,12 @@ import (
 // independent of the traffic-recording MITM proxy — set it when the search endpoint
 // is only reachable via a VPN/SOCKS proxy. Empty = direct.
 type WebSearchOpts struct {
-	Enabled   bool
-	Backend   string
-	BraveKey  string
-	TavilyKey string
-	Proxy     string
+	Enabled    bool
+	Backend    string
+	BraveKey   string
+	TavilyKey  string
+	SearxngURL string
+	Proxy      string
 }
 
 type Worker struct {
@@ -254,6 +255,7 @@ func (w *Worker) Execute(ctx context.Context, name string, taskID int64, as *db.
 		WebSearchBackend:   w.webSearch.Backend,
 		BraveSearchAPIKey:  w.webSearch.BraveKey,
 		TavilySearchAPIKey: w.webSearch.TavilyKey,
+		SearxngURL:         w.webSearch.SearxngURL,
 		WebSearchProxy:     w.webSearch.Proxy,
 		// Bash 子命令的 HTTP 默认走记录代理 + 信任其 CA（工具无需 -x/-k）。
 		BashEnv:    proxyEnv(w.proxyAddr, w.proxyCACert),

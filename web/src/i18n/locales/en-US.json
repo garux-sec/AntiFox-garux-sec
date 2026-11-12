@@ -1251,7 +1251,13 @@
       "braveSaved": "Brave API Key saved",
       "tavilySaved": "Tavily API Key saved",
       "proxySaved": "Egress proxy saved",
-      "proxyCleared": "Egress proxy cleared (switched to direct)"
+      "proxyCleared": "Egress proxy cleared (switched to direct)",
+      "sourceSearxng": "SearXNG (self-hosted)",
+      "searxngUrlLabel": "SearXNG instance URL",
+      "searxngNeedsUrl": "Enter the SearXNG instance URL, otherwise web search stays off.",
+      "searxngHint": "Base URL of your SearXNG instance (e.g. http://searxng:8080). The instance must enable the JSON format — add \"json\" to search.formats in settings.yml. No API key needed.",
+      "searxngSaved": "SearXNG URL saved",
+      "searxngCleared": "SearXNG URL cleared"
     },
     "globalProxy": {
       "title": "Global Egress Proxy",

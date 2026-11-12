@@ -111,6 +111,7 @@ func (c *ChatAgent) Chat(ctx context.Context, agentKey, sessionID, message strin
 		WebSearchBackend:   ws.Backend,
 		BraveSearchAPIKey:  ws.BraveKey,
 		TavilySearchAPIKey: ws.TavilyKey,
+		SearxngURL:         ws.SearxngURL,
 		WebSearchProxy:     ws.Proxy,
 		BashEnv:           proxyEnv(c.proxyAddr, c.proxyCACert), // Bash 子命令默认走代理+信任 CA
 		WorkingDir:        sessionWorkDir,
