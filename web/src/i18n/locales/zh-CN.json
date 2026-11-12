@@ -756,7 +756,9 @@
       "recording": "录制中",
       "captureOff": "捕获未开启",
       "tokenUsage": "Token 用量",
-      "tokenBreakdown": "入 {{input}}（含缓存 {{cache}}）· 出 {{output}}"
+      "tokenBreakdown": "入 {{input}}（含缓存 {{cache}}）· 出 {{output}}",
+      "estCost": "预估费用",
+      "costNA": "暂无"
     },
     "tokenType": {
       "input": "输入",
@@ -769,7 +771,10 @@
       "total": "合计 (输入+输出)",
       "inputMiss": "输入(未命中)",
       "cacheHit": "缓存命中",
-      "cacheHitRate": "缓存命中率"
+      "cacheHitRate": "缓存命中率",
+      "estCost": "预估费用",
+      "estCostHint": "按内置价格粗略估算",
+      "costNA": "暂无"
     },
     "range": {
       "d7": "7天",

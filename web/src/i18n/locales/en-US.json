@@ -756,7 +756,9 @@
       "recording": "Recording",
       "captureOff": "Capture off",
       "tokenUsage": "Token usage",
-      "tokenBreakdown": "In {{input}} (incl. cache {{cache}}) · Out {{output}}"
+      "tokenBreakdown": "In {{input}} (incl. cache {{cache}}) · Out {{output}}",
+      "estCost": "Est. cost",
+      "costNA": "n/a"
     },
     "tokenType": {
       "input": "Input",
@@ -769,7 +771,10 @@
       "total": "Total (input + output)",
       "inputMiss": "Input (miss)",
       "cacheHit": "Cache hit",
-      "cacheHitRate": "Cache hit rate"
+      "cacheHitRate": "Cache hit rate",
+      "estCost": "Est. cost",
+      "estCostHint": "Rough estimate from built-in prices",
+      "costNA": "n/a"
     },
     "range": {
       "d7": "7d",

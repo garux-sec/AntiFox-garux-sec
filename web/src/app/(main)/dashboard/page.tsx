@@ -51,6 +51,7 @@ import {
 import { StatusBadge } from "@/components/status-badge";
 import { api } from "@/lib/api";
 import { taskLabel } from "@/lib/task-label";
+import { costUSD, fmtUSD } from "@/lib/llm-pricing";
 import type {
   Activity,
   Agent,
@@ -606,6 +607,44 @@ export default function DashboardPage() {
              : { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, taskCount: 0 };
   }, [tokenTab, tokenByProfile, isTaskScoped, selectedTaskObj]);
 
+  // ── estimated USD cost ────────────────────────────────────────────────────
+  // Price each profile's tokens by its own model (profiles can run different
+  // models), so a mixed "All" total sums per-model costs instead of pricing one
+  // blended number. A model missing from the built-in table contributes nothing
+  // and its profile is flagged so the UI can show "partial".
+  const modelById = React.useMemo(() => {
+    const m = new Map<number, string>();
+    for (const p of llmProfiles) m.set(Number(p.id), p.model);
+    return m;
+  }, [llmProfiles]);
+
+  const displayedCost = React.useMemo<{ usd: number | null; partial: boolean }>(() => {
+    if (isTaskScoped) {
+      const pid = selectedTaskObj?.llm_profile_id ?? defaultProfileId;
+      const model = pid != null ? modelById.get(pid) : undefined;
+      const c = costUSD(model, displayedTokens);
+      return { usd: c, partial: false };
+    }
+    if (tokenTab === "all") {
+      let sum = 0;
+      let anyKnown = false;
+      let anyUnknown = false;
+      for (const [pid, v] of tokenByProfile) {
+        const model = pid != null ? modelById.get(pid) : undefined;
+        const c = costUSD(model, v);
+        if (c == null) {
+          if (v.input + v.output > 0) anyUnknown = true;
+        } else {
+          sum += c;
+          anyKnown = true;
+        }
+      }
+      return { usd: anyKnown ? sum : null, partial: anyKnown && anyUnknown };
+    }
+    const model = tokenTab != null ? modelById.get(tokenTab as number) : undefined;
+    return { usd: costUSD(model, displayedTokens), partial: false };
+  }, [isTaskScoped, selectedTaskObj, defaultProfileId, modelById, displayedTokens, tokenTab, tokenByProfile]);
+
   // daily token data: tasks grouped by date, filtered by day range and selected profile
   const dailyTokenData = React.useMemo(() => {
     const now = new Date();
@@ -815,8 +854,14 @@ export default function DashboardPage() {
               {fmtTokens(displayedTokens.input + displayedTokens.output) || "—"}
             </div>
           </CardHeader>
-          <CardContent className="text-[10px] text-muted-foreground">
-            {tr("dashboard.stat.tokenBreakdown", { input: fmtTokens(displayedTokens.input), cache: fmtTokens(displayedTokens.cacheRead), output: fmtTokens(displayedTokens.output) })}
+          <CardContent className="flex flex-col gap-0.5 text-[10px] text-muted-foreground">
+            <span>
+              {tr("dashboard.stat.tokenBreakdown", { input: fmtTokens(displayedTokens.input), cache: fmtTokens(displayedTokens.cacheRead), output: fmtTokens(displayedTokens.output) })}
+            </span>
+            <span className="font-medium text-emerald-400">
+              {tr("dashboard.stat.estCost")}: {displayedCost.usd != null ? fmtUSD(displayedCost.usd) : tr("dashboard.stat.costNA")}
+              {displayedCost.partial && " *"}
+            </span>
           </CardContent>
         </Card>
       </div>
@@ -1017,6 +1062,15 @@ export default function DashboardPage() {
               <div className="mt-0.5 text-[10px] text-muted-foreground">
                 {tr("dashboard.taskCount", { count: displayedTokens.taskCount })}
               </div>
+              {/* estimated USD cost */}
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="text-[10px] text-muted-foreground">{tr("dashboard.tokenConsumption.estCost")}</span>
+                <span className="text-lg font-semibold tabular-nums text-emerald-400">
+                  {displayedCost.usd != null ? fmtUSD(displayedCost.usd) : tr("dashboard.tokenConsumption.costNA")}
+                </span>
+                {displayedCost.partial && <span className="text-[9px] text-amber-400">*</span>}
+              </div>
+              <div className="text-[9px] text-muted-foreground/70">{tr("dashboard.tokenConsumption.estCostHint")}</div>
             </div>
 
             {/* Per-type bars */}

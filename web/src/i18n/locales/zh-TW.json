@@ -756,7 +756,9 @@
       "recording": "錄製中",
       "captureOff": "擷取未開啟",
       "tokenUsage": "Token 用量",
-      "tokenBreakdown": "入 {{input}}（含快取 {{cache}}）· 出 {{output}}"
+      "tokenBreakdown": "入 {{input}}（含快取 {{cache}}）· 出 {{output}}",
+      "estCost": "預估費用",
+      "costNA": "暫無"
     },
     "tokenType": {
       "input": "輸入",
@@ -769,7 +771,10 @@
       "total": "合計（輸入＋輸出）",
       "inputMiss": "輸入（未命中）",
       "cacheHit": "快取命中",
-      "cacheHitRate": "快取命中率"
+      "cacheHitRate": "快取命中率",
+      "estCost": "預估費用",
+      "estCostHint": "依內建價格粗略估算",
+      "costNA": "暫無"
     },
     "range": {
       "d7": "7天",
