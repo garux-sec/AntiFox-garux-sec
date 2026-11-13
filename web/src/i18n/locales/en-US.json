@@ -1984,6 +1984,9 @@
     "topRisks": "Top risks",
     "launch": "Launch pentest",
     "launched": "Pentest task created",
-    "launchConfirm": "Create a pentest task against: {{target}} ?\n\n(Runs active exploitation — authorized scope only.)"
+    "launchConfirm": "Create a pentest task against: {{target}} ?\n\n(Runs active exploitation — authorized scope only.)",
+    "scan": "Scan",
+    "scanPlaceholder": "Domain or keyword, e.g. mitrphol.com",
+    "scanStarted": "Recon sweep started"
   }
 }

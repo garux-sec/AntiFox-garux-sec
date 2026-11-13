@@ -1984,6 +1984,9 @@
     "topRisks": "主要风险",
     "launch": "发起渗透",
     "launched": "已创建渗透任务",
-    "launchConfirm": "对以下目标创建渗透任务：{{target}} ？\n\n(会执行主动利用 — 仅限授权范围。)"
+    "launchConfirm": "对以下目标创建渗透任务：{{target}} ？\n\n(会执行主动利用 — 仅限授权范围。)",
+    "scan": "扫描",
+    "scanPlaceholder": "域名或关键词，如 mitrphol.com",
+    "scanStarted": "已启动侦察扫描"
   }
 }

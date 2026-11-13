@@ -23,11 +23,12 @@ import "@xyflow/react/dist/style.css";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Loader2Icon, RefreshCwIcon, WaypointsIcon, ShieldAlertIcon, CrosshairIcon } from "lucide-react";
+import { Loader2Icon, RefreshCwIcon, WaypointsIcon, ShieldAlertIcon, CrosshairIcon, RadarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type { Asset } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 // Asset type → attack-surface tier (column) + color. root domains on the left,
 // endpoints on the right, so edges read left-to-right as reachability chains.
@@ -240,6 +241,8 @@ function AttackSurfaceInner() {
   const [assets, setAssets] = React.useState<Asset[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [launching, setLaunching] = React.useState(false);
+  const [scanInput, setScanInput] = React.useState("");
+  const [scanning, setScanning] = React.useState(false);
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<ASNode>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
 
@@ -312,6 +315,37 @@ function AttackSurfaceInner() {
     [launchTask],
   );
 
+  // Auto-sweep: create a passive-recon task that runs ALL collectors against the
+  // keyword/domain and populates the asset graph, then open it so the user watches
+  // the sweep. The agent (worker) owns crt_sh/dns/shodan/github/web_search/etc.
+  const startScan = React.useCallback(async () => {
+    const kw = scanInput.trim();
+    if (!kw || scanning) return;
+    setScanning(true);
+    try {
+      const task = await api.createTask(
+        `ASM recon: ${kw}`,
+        `Passive attack-surface recon for "${kw}" (authorized scope only). Add every reachable asset to the asset graph.`,
+        `Map the complete external attack surface of "${kw}" using ALL available OSINT/recon tools, passively (do NOT exploit or brute-force):
+- crt_sh: enumerate subdomains from certificate transparency
+- dns_lookup: resolve each host (A/AAAA/CNAME/MX/NS/TXT)
+- rdap_whois: ownership/registrar for the domain and key IPs
+- shodan_host: exposed services/ports/CVEs for each resolved IP
+- github_code_search: leaked secrets/configs/references mentioning the target
+- web_search: OSINT, news and CTI mentions of the target
+- cve_lookup: CVEs for any product/version found via Shodan fingerprints
+- breach_lookup: known data breaches for the domain (if a key is configured)
+Persist findings continuously with insert_assets (root_domain/subdomain/ip/service/endpoint). Deduplicate. Stop when sources are exhausted; produce a short summary of the attack surface.`,
+      );
+      toast.success(t("attackSurface.scanStarted"));
+      router.push(`/function/tasks/detail?id=${task.id}`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setScanning(false);
+    }
+  }, [scanInput, scanning, router, t]);
+
   // the whole surface: root domains + the riskiest hosts, as one target string.
   const surfaceTarget = React.useMemo(() => {
     const roots = assets.filter((a) => a.type === "root_domain").map((a) => a.domain).filter(Boolean);
@@ -328,16 +362,35 @@ function AttackSurfaceInner() {
           </h1>
           <p className="text-xs text-muted-foreground">{t("attackSurface.subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => void launchTask(surfaceTarget, "Attack Surface pentest")}
-            disabled={loading || launching || !surfaceTarget}
-          >
-            {launching ? <Loader2Icon className="size-3.5 animate-spin" /> : <CrosshairIcon className="size-3.5" />}
-            {t("attackSurface.launch")}
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <Input
+              className="h-8 w-56 text-sm"
+              placeholder={t("attackSurface.scanPlaceholder")}
+              value={scanInput}
+              disabled={scanning}
+              onChange={(e) => setScanInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void startScan();
+              }}
+            />
+            <Button size="sm" onClick={() => void startScan()} disabled={scanning || scanInput.trim() === ""}>
+              {scanning ? <Loader2Icon className="size-3.5 animate-spin" /> : <RadarIcon className="size-3.5" />}
+              {t("attackSurface.scan")}
+            </Button>
+          </div>
+          {surfaceTarget && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void launchTask(surfaceTarget, "Attack Surface pentest")}
+              disabled={loading || launching}
+            >
+              {launching ? <Loader2Icon className="size-3.5 animate-spin" /> : <CrosshairIcon className="size-3.5" />}
+              {t("attackSurface.launch")}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => void load()} disabled={loading}>
             {loading ? <Loader2Icon className="size-3.5 animate-spin" /> : <RefreshCwIcon className="size-3.5" />}
             {t("common.refresh")}
           </Button>

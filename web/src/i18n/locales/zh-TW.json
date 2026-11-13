@@ -1984,6 +1984,9 @@
     "topRisks": "主要風險",
     "launch": "發起滲透",
     "launched": "已建立滲透任務",
-    "launchConfirm": "對以下目標建立滲透任務：{{target}} ？\n\n(會執行主動利用 — 僅限授權範圍。)"
+    "launchConfirm": "對以下目標建立滲透任務：{{target}} ？\n\n(會執行主動利用 — 僅限授權範圍。)",
+    "scan": "掃描",
+    "scanPlaceholder": "網域或關鍵字，如 mitrphol.com",
+    "scanStarted": "已啟動偵察掃描"
   }
 }
