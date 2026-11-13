@@ -89,7 +89,7 @@ func (m *Manager) AIReportConfigured() bool {
 // AI-Report schema (attaching evidence screenshots as data URLs), creates a new
 // report and bulk-attaches the vulnerabilities. Returns the new report id and
 // the number of findings pushed. Safe to call in a goroutine.
-func (s *Server) pushTaskToAIReport(t *Task) (string, int, error) {
+func (s *Server) pushTaskToAIReport(t *Task, projectID string) (string, int, error) {
 	base := strings.TrimRight(s.m.AIReportURL(), "/")
 	key := s.m.AIReportKey()
 	if base == "" || key == "" {
@@ -124,6 +124,9 @@ func (s *Server) pushTaskToAIReport(t *Task) (string, int, error) {
 	}
 	if u := dominantTarget(vulns); u != "" {
 		createPayload["url"] = u
+	}
+	if projectID = strings.TrimSpace(projectID); projectID != "" {
+		createPayload["project"] = projectID // link the report to the chosen AI-Report project
 	}
 
 	var created struct {
@@ -360,19 +363,49 @@ func (s *Server) syncAIReportMCP() {
 }
 
 // pushAIReport handles POST /api/tasks/{id}/push-aireport — manual (re)send of a
-// task's findings to AI-Report, returning the created report id + count.
+// task's findings to AI-Report, optionally into a chosen project. Returns the
+// created report id + count.
 func (s *Server) pushAIReport(w http.ResponseWriter, r *http.Request) {
 	t, ok := s.m.Task(r.PathValue("id"))
 	if !ok || t == nil {
 		writeErr(w, 404, "task not found")
 		return
 	}
-	id, n, err := s.pushTaskToAIReport(t)
+	var body struct {
+		ProjectID string `json:"project_id"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body) // empty body = no project
+	id, n, err := s.pushTaskToAIReport(t, body.ProjectID)
 	if err != nil {
 		writeErr(w, 400, err.Error())
 		return
 	}
 	writeJSON(w, 200, map[string]any{"report_id": id, "findings": n})
+}
+
+// listAIReportProjects handles GET /api/aireport/projects — proxies AI-Report's
+// project list so the UI can offer a target project when sending findings.
+func (s *Server) listAIReportProjects(w http.ResponseWriter, r *http.Request) {
+	base := strings.TrimRight(s.m.AIReportURL(), "/")
+	key := s.m.AIReportKey()
+	if base == "" || key == "" {
+		writeErr(w, 400, "AI-Report not configured (set the base URL and API key in Settings)")
+		return
+	}
+	var raw []struct {
+		ID         string `json:"_id"`
+		Name       string `json:"name"`
+		ClientName string `json:"clientName"`
+	}
+	if err := s.aiReportCall(base, key, http.MethodGet, "/api/projects", nil, &raw); err != nil {
+		writeErr(w, 400, err.Error())
+		return
+	}
+	out := make([]map[string]string, 0, len(raw))
+	for _, p := range raw {
+		out = append(out, map[string]string{"id": p.ID, "name": p.Name, "client_name": p.ClientName})
+	}
+	writeJSON(w, 200, out)
 }
 
 // testAIReport handles POST /api/aireport/test — verify connectivity + key by
@@ -405,7 +438,7 @@ func (s *Server) autoPushToAIReport(t *Task) {
 		return
 	}
 	go func() {
-		id, n, err := s.pushTaskToAIReport(t)
+		id, n, err := s.pushTaskToAIReport(t, "") // auto-push has no project selection
 		if err != nil {
 			log.Printf("[aireport] auto-push task %s failed: %v", t.ID, err)
 			return

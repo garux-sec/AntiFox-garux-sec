@@ -684,6 +684,7 @@ func (s *Server) Handler() http.Handler {
 	// AI-Report ("AI Kill Chain") integration: push a task's findings, or test connectivity.
 	mux.HandleFunc("POST /api/tasks/{id}/push-aireport", s.pushAIReport)
 	mux.HandleFunc("POST /api/aireport/test", s.testAIReport)
+	mux.HandleFunc("GET /api/aireport/projects", s.listAIReportProjects)
 	// 漏洞富化（管理层覆盖，键为探索节点 id）
 	mux.HandleFunc("GET /api/findings/{id}", s.findingDetail)
 	mux.HandleFunc("POST /api/findings/{id}/enrich", s.findingEnrich)

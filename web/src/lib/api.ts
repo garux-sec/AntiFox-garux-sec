@@ -248,8 +248,9 @@ export const api = {
   // AI-Report ("AI Kill Chain") integration: test connectivity, or push a task's findings.
   testAIReport: (url?: string, key?: string) =>
     post<{ ok: boolean; reports?: number }>(`/aireport/test`, { url, key }),
-  pushAIReport: (taskID: string) =>
-    post<{ report_id: string; findings: number }>(`/tasks/${taskID}/push-aireport`, {}),
+  pushAIReport: (taskID: string, projectId?: string) =>
+    post<{ report_id: string; findings: number }>(`/tasks/${taskID}/push-aireport`, { project_id: projectId }),
+  aiReportProjects: () => get<{ id: string; name: string; client_name: string }[]>(`/aireport/projects`),
 
   // ---- 一键更新（GitHub Release → 校验 → 暂存 → 守护脚本重启换装）----
   updateCheck: (force = false) => get<UpdateCheck>(`/update/check${force ? "?force=1" : ""}`),

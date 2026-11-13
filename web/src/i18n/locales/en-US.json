@@ -1607,6 +1607,9 @@
       "aireportSending": "Sending…",
       "aireportSent": "Sent {{n}} finding(s) to AI-Report",
       "aireportFailed": "Send to AI-Report failed: {{msg}}",
+      "aireportPick": "Send to project…",
+      "aireportNoProject": "No project (standalone)",
+      "aireportNoProjects": "No projects found",
       "docxHint": "\"Generate Word Report\" uses AI to rewrite findings into professional prose and lays it out as a delivery-grade .docx via python-docx; the Markdown quick preview is below."
     }
   },

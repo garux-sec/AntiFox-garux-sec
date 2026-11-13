@@ -1607,6 +1607,9 @@
       "aireportSending": "推送中…",
       "aireportSent": "已推送 {{n}} 個發現到 AI-Report",
       "aireportFailed": "推送到 AI-Report 失敗：{{msg}}",
+      "aireportPick": "推送到專案…",
+      "aireportNoProject": "不歸屬專案（獨立報告）",
+      "aireportNoProjects": "未找到專案",
       "docxHint": "「產生 Word 報告」會呼叫 AI 將發現改寫為專業中文敘述，並用 python-docx 排版成交付級 .docx；下方為 Markdown 快速預覽。"
     }
   },
