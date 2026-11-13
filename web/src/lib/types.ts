@@ -446,6 +446,11 @@ export interface Settings {
   github_token?: string; // write-only
   hibp_api_key?: string; // write-only
   nvd_api_key?: string; // write-only
+  // AI-Report ("AI Kill Chain") push integration.
+  aireport_url?: string; // base URL (returned on GET; sent on PUT to set/clear). Empty = integration off.
+  aireport_key_set?: boolean; // whether an API key is stored (value never returned)
+  aireport_api_key?: string; // write-only
+  aireport_autopush?: boolean; // auto-push findings when a task completes
 }
 
 // ---- 一键更新 ----

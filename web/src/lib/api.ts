@@ -245,6 +245,11 @@ export const api = {
   // Verify a global egress proxy works + report the egress IP (confirms source IP is hidden).
   testGlobalProxy: (proxy: string) =>
     post<{ ok: boolean; error?: string; egress_ip?: string; latency_ms?: number }>(`/settings/global-proxy/test`, { global_proxy: proxy }),
+  // AI-Report ("AI Kill Chain") integration: test connectivity, or push a task's findings.
+  testAIReport: (url?: string, key?: string) =>
+    post<{ ok: boolean; reports?: number }>(`/aireport/test`, { url, key }),
+  pushAIReport: (taskID: string) =>
+    post<{ report_id: string; findings: number }>(`/tasks/${taskID}/push-aireport`, {}),
 
   // ---- 一键更新（GitHub Release → 校验 → 暂存 → 守护脚本重启换装）----
   updateCheck: (force = false) => get<UpdateCheck>(`/update/check${force ? "?force=1" : ""}`),

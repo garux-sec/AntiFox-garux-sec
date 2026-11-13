@@ -93,6 +93,9 @@ const (
 	settingGithubToken      = "github_token"     // GitHub token for code-search recon (secret/config leaks)
 	settingHIBPKey          = "hibp_api_key"     // Have I Been Pwned API key for breach lookups
 	settingNVDKey           = "nvd_api_key"      // optional NVD API key (raises CVE-lookup rate limit)
+	settingAIReportURL      = "aireport_url"      // AI-Report ("AI Kill Chain") base URL for finding push
+	settingAIReportKey      = "aireport_api_key"  // AI-Report X-API-Key
+	settingAIReportAutoPush = "aireport_autopush" // "1"/"0" auto-push on task completion (default on when configured)
 	// defaultWebSearchBackend is used when web search is on but no backend was picked.
 	defaultWebSearchBackend = "ddgs"
 	// defaultWorkers is the concurrent work-agent count when the setting is unset.
@@ -181,6 +184,30 @@ func (m *Manager) HIBPKey() string {
 func (m *Manager) NVDKey() string {
 	v, _, _ := m.pg.GetSetting(settingNVDKey)
 	return strings.TrimSpace(v)
+}
+
+// AIReportURL returns the AI-Report ("AI Kill Chain") base URL for finding push
+// (e.g. http://host.docker.internal:9000). Empty = integration off.
+func (m *Manager) AIReportURL() string {
+	v, _, _ := m.pg.GetSetting(settingAIReportURL)
+	return strings.TrimSpace(v)
+}
+
+// AIReportKey returns the stored AI-Report X-API-Key (empty = unset).
+func (m *Manager) AIReportKey() string {
+	v, _, _ := m.pg.GetSetting(settingAIReportKey)
+	return strings.TrimSpace(v)
+}
+
+// AIReportAutoPush reports whether a finished task should auto-push its findings
+// to AI-Report. Defaults to ON whenever the integration is configured; an
+// explicit "0" turns the auto-push off while keeping manual re-send available.
+func (m *Manager) AIReportAutoPush() bool {
+	v, ok, _ := m.pg.GetSetting(settingAIReportAutoPush)
+	if !ok || strings.TrimSpace(v) == "" {
+		return true
+	}
+	return strings.TrimSpace(v) != "0"
 }
 
 // Enrich returns the asset auto-completion engine (may be nil if init failed).

@@ -157,6 +157,8 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string) *Serv
 		}
 		return s.agentsForProfile(*t.LLMProfileID)
 	})
+	// On task completion, auto-push confirmed findings to AI-Report (if configured).
+	s.engine.SetTaskDoneHook(s.autoPushToAIReport)
 	// Wire DB-stored prompt templates into the agents (新版方案 §3.3 / §5a). With no
 	// override row, agents keep their built-in defaults — behavior is unchanged.
 	if m.pg != nil {
@@ -676,6 +678,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/knowledge/{id}", s.deleteKnowledge)
 	// 漏洞补录：从任务会话转录提取漏洞，补建 finding 节点（探索图/发现页/报告同时补齐）
 	mux.HandleFunc("POST /api/tasks/{id}/extract-findings", s.extractFindings)
+	// AI-Report ("AI Kill Chain") integration: push a task's findings, or test connectivity.
+	mux.HandleFunc("POST /api/tasks/{id}/push-aireport", s.pushAIReport)
+	mux.HandleFunc("POST /api/aireport/test", s.testAIReport)
 	// 漏洞富化（管理层覆盖，键为探索节点 id）
 	mux.HandleFunc("GET /api/findings/{id}", s.findingDetail)
 	mux.HandleFunc("POST /api/findings/{id}/enrich", s.findingEnrich)
@@ -1878,6 +1883,9 @@ func (s *Server) settingsPayload() map[string]any {
 		"github_token_set":    s.m.GithubToken() != "",     // whether a GitHub token is stored (value never returned)
 		"hibp_key_set":        s.m.HIBPKey() != "",         // whether an HIBP API key is stored
 		"nvd_key_set":         s.m.NVDKey() != "",          // whether an NVD API key is stored
+		"aireport_url":        s.m.AIReportURL(),           // AI-Report ("AI Kill Chain") base URL (empty = integration off)
+		"aireport_key_set":    s.m.AIReportKey() != "",     // whether an AI-Report API key is stored (value never returned)
+		"aireport_autopush":   s.m.AIReportAutoPush(),      // auto-push findings when a task completes
 	}
 }
 
@@ -1917,6 +1925,9 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		GithubToken      *string  `json:"github_token"`       // GitHub token; null=unchanged, ""=clear
 		HIBPKey          *string  `json:"hibp_api_key"`       // HIBP API key; null=unchanged, ""=clear
 		NVDKey           *string  `json:"nvd_api_key"`        // NVD API key; null=unchanged, ""=clear
+		AIReportURL      *string  `json:"aireport_url"`       // AI-Report base URL; null=unchanged, ""=clear(off)
+		AIReportKey      *string  `json:"aireport_api_key"`   // AI-Report X-API-Key; null=unchanged, ""=clear
+		AIReportAutoPush *bool    `json:"aireport_autopush"`  // auto-push on task completion
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, 400, err.Error())
@@ -1954,6 +1965,28 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.NVDKey != nil {
 		if err := s.m.pg.SetSetting(settingNVDKey, strings.TrimSpace(*req.NVDKey)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.AIReportURL != nil {
+		if err := s.m.pg.SetSetting(settingAIReportURL, strings.TrimSpace(*req.AIReportURL)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.AIReportKey != nil {
+		if err := s.m.pg.SetSetting(settingAIReportKey, strings.TrimSpace(*req.AIReportKey)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.AIReportAutoPush != nil {
+		v := "1"
+		if !*req.AIReportAutoPush {
+			v = "0"
+		}
+		if err := s.m.pg.SetSetting(settingAIReportAutoPush, v); err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}

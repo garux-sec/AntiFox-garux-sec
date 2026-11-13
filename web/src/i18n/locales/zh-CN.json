@@ -1305,6 +1305,21 @@
       "desc": "用于攻击面(ASM)与 OSINT 侦察采集器的 API Key。密钥仅存于服务端，不会回传浏览器。",
       "saved": "侦察 API Key 已保存",
       "hint": "Shodan 用于查询暴露服务/端口/CVE；GitHub token 启用代码搜索(查泄露的密钥/配置)并提升速率上限。仅用于对你自己授权范围的侦察。"
+    },
+    "aireport": {
+      "title": "AI-Report 对接",
+      "desc": "把已完成任务的确认漏洞推送到 AI-Report(\"AI Kill Chain\")，自动建成带漏洞的报告，便于在那里完善并导出 PDF。",
+      "urlLabel": "AI-Report 地址",
+      "keyLabel": "AI-Report API Key (X-API-Key)",
+      "autopushLabel": "任务完成时自动推送",
+      "autopushHint": "任务进入\"已完成\"时，自动把漏洞发送过去。",
+      "test": "测试连接",
+      "testing": "测试中…",
+      "testOk": "已连接 — 可见 {{n}} 份报告",
+      "testFailed": "连接失败",
+      "testFailedMsg": "连接失败：{{msg}}",
+      "saved": "AI-Report 设置已保存",
+      "hint": "Docker 内访问宿主机用 http://host.docker.internal:9000。API Key 来自 AI-Report → 系统设置。证据截图会作为图片一并附上。"
     }
   },
   "logs": {

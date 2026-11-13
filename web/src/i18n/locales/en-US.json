@@ -1305,6 +1305,21 @@
       "desc": "API keys for attack-surface (ASM) and OSINT recon collectors. Keys are stored server-side and never returned to the browser.",
       "saved": "Recon API key saved",
       "hint": "Shodan powers exposed-service/port/CVE lookups; a GitHub token enables code search for leaked secrets/configs (and raises rate limits). Used only for authorized recon of your own scope."
+    },
+    "aireport": {
+      "title": "AI-Report Integration",
+      "desc": "Push a finished task's confirmed findings into AI-Report (\"AI Kill Chain\") as a new report with vulnerabilities, so you can refine and export the PDF there.",
+      "urlLabel": "AI-Report base URL",
+      "keyLabel": "AI-Report API key (X-API-Key)",
+      "autopushLabel": "Auto-push on task completion",
+      "autopushHint": "When a task reaches \"done\", its findings are sent automatically.",
+      "test": "Test connection",
+      "testing": "Testing…",
+      "testOk": "Connected — {{n}} report(s) visible",
+      "testFailed": "Connection failed",
+      "testFailedMsg": "Connection failed: {{msg}}",
+      "saved": "AI-Report settings saved",
+      "hint": "From Docker, reach the host at http://host.docker.internal:9000. The API key comes from AI-Report → System Settings. Evidence screenshots are attached as images."
     }
   },
   "logs": {

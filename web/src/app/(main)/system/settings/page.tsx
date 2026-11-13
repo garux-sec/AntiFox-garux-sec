@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { CpuIcon, DollarSignIcon, RadarIcon, RadioTowerIcon, SearchIcon } from "lucide-react";
+import { CpuIcon, DollarSignIcon, FileUpIcon, RadarIcon, RadioTowerIcon, SearchIcon } from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -48,6 +48,12 @@ export default function SystemSettingsPage() {
   const [nvdKeySet, setNvdKeySet] = React.useState(false);
   const [nvdKeyInput, setNvdKeyInput] = React.useState("");
   const [savingRecon, setSavingRecon] = React.useState(false);
+  const [airUrl, setAirUrl] = React.useState("");
+  const [airKeySet, setAirKeySet] = React.useState(false);
+  const [airKeyInput, setAirKeyInput] = React.useState("");
+  const [airAutoPush, setAirAutoPush] = React.useState(true);
+  const [savingAir, setSavingAir] = React.useState(false);
+  const [testingAir, setTestingAir] = React.useState(false);
   const [globalProxy, setGlobalProxy] = React.useState("");
   const [savingGlobalProxy, setSavingGlobalProxy] = React.useState(false);
   const [testingGlobalProxy, setTestingGlobalProxy] = React.useState(false);
@@ -68,7 +74,35 @@ export default function SystemSettingsPage() {
     setGithubTokenSet(!!s.github_token_set);
     setHibpKeySet(!!s.hibp_key_set);
     setNvdKeySet(!!s.nvd_key_set);
+    setAirUrl(s.aireport_url || "");
+    setAirKeySet(!!s.aireport_key_set);
+    setAirAutoPush(s.aireport_autopush ?? true);
   }, []);
+
+  const saveAIReport = (patch: Partial<Settings>) => {
+    setSavingAir(true);
+    api
+      .setSettings(patch)
+      .then((s) => {
+        apply(s);
+        setAirKeyInput("");
+        toast.success(t("settings.aireport.saved"));
+      })
+      .catch((e) => toast.error(t("settings.saveFailed", { msg: (e as Error).message })))
+      .finally(() => setSavingAir(false));
+  };
+
+  const testAIReport = () => {
+    setTestingAir(true);
+    api
+      .testAIReport(airUrl.trim() || undefined, airKeyInput.trim() || undefined)
+      .then((r) => {
+        if (r.ok) toast.success(t("settings.aireport.testOk", { n: r.reports ?? 0 }));
+        else toast.error(t("settings.aireport.testFailed"));
+      })
+      .catch((e) => toast.error(t("settings.aireport.testFailedMsg", { msg: (e as Error).message })))
+      .finally(() => setTestingAir(false));
+  };
 
   const saveReconKeys = (patch: Partial<Settings>) => {
     setSavingRecon(true);
@@ -702,6 +736,80 @@ export default function SystemSettingsPage() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">{t("settings.recon.hint")}</p>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-2xl lg:max-w-none">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileUpIcon className="size-4" />
+            {t("settings.aireport.title")}
+          </CardTitle>
+          <CardDescription>{t("settings.aireport.desc")}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="air-url" className="text-sm font-normal text-muted-foreground">
+              {t("settings.aireport.urlLabel")}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="air-url"
+                type="text"
+                autoComplete="off"
+                placeholder="http://host.docker.internal:9000"
+                value={airUrl}
+                disabled={!loaded || savingAir}
+                onChange={(e) => setAirUrl(e.target.value)}
+              />
+              <Button type="button" onClick={() => saveAIReport({ aireport_url: airUrl.trim() })} disabled={!loaded || savingAir}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="air-key" className="text-sm font-normal text-muted-foreground">
+              {t("settings.aireport.keyLabel")}
+              {airKeySet && <span className="ml-2 text-xs text-emerald-500">{t("settings.webSearch.keySet")}</span>}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="air-key"
+                type="password"
+                autoComplete="off"
+                placeholder={airKeySet ? t("settings.webSearch.keySetPlaceholder") : "aireport_…"}
+                value={airKeyInput}
+                disabled={!loaded || savingAir}
+                onChange={(e) => setAirKeyInput(e.target.value)}
+              />
+              <Button type="button" onClick={() => saveAIReport({ aireport_api_key: airKeyInput })} disabled={!loaded || savingAir || airKeyInput.trim() === ""}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col">
+              <Label htmlFor="air-autopush" className="text-sm font-normal">
+                {t("settings.aireport.autopushLabel")}
+              </Label>
+              <span className="text-xs text-muted-foreground">{t("settings.aireport.autopushHint")}</span>
+            </div>
+            <Switch
+              id="air-autopush"
+              checked={airAutoPush}
+              disabled={!loaded || savingAir}
+              onCheckedChange={(v) => {
+                setAirAutoPush(v);
+                saveAIReport({ aireport_autopush: v });
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" onClick={testAIReport} disabled={!loaded || testingAir}>
+              {testingAir ? t("settings.aireport.testing") : t("settings.aireport.test")}
+            </Button>
+            <p className="text-xs text-muted-foreground">{t("settings.aireport.hint")}</p>
+          </div>
         </CardContent>
       </Card>
       </div>

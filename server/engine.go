@@ -38,6 +38,10 @@ type Engine struct {
 
 	bc *Broadcaster // live activity pub/sub (SSE)
 
+	// onTaskDone is an optional hook fired once a task is persisted as "done"
+	// (goal met). Wired by the server to auto-push findings to AI-Report.
+	onTaskDone func(t *Task)
+
 	mu      sync.RWMutex
 	planner *agent.Planner
 	worker  *agent.Worker
@@ -396,6 +400,10 @@ func (e *Engine) snapshot() (*agent.Planner, *agent.Worker) {
 	return e.planner, e.worker
 }
 
+// SetTaskDoneHook installs a callback fired when a task reaches the "done"
+// terminal state (goal met). Used to auto-push findings to AI-Report.
+func (e *Engine) SetTaskDoneHook(fn func(t *Task)) { e.onTaskDone = fn }
+
 // SetAgentResolver installs a per-task planner/worker resolver (wired by the server).
 // Called once at startup before any task loop runs, so no lock is needed on reads.
 func (e *Engine) SetAgentResolver(fn func(t *Task) (*agent.Planner, *agent.Worker)) {
@@ -509,6 +517,11 @@ func (e *Engine) plannerLoop(ctx context.Context, t *Task) {
 				// 下一轮 worker 循环撞终态门就不再领新意图;被取消的这批走下方"任务已完成"分支
 				// 归为 stopped(而非 blocked)。
 				e.cancelExec(t.ID)
+				// Fire the completion hook (auto-push findings to AI-Report). Best-effort,
+				// non-blocking: the hook itself spawns its own goroutine.
+				if e.onTaskDone != nil {
+					e.onTaskDone(t)
+				}
 			default:
 				log.Printf("[planner] task %s planning complete", t.ID)
 			}
