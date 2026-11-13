@@ -1644,7 +1644,14 @@
     "goalEditHint": "修改目标会引导后续规划（不会自动重新拆解，请配合「继续运行」使其生效）。",
     "saved": "任务已更新",
     "saveFailed": "更新失败：{{msg}}",
-    "opFailed": "操作失败：{{msg}}"
+    "opFailed": "操作失败：{{msg}}",
+    "mode": {
+      "label": "任务模式",
+      "pentest": "渗透测试",
+      "asm": "攻击面(仅侦察)",
+      "pentestHint": "完整利用：对目标规划并利用漏洞。",
+      "asmHint": "仅被动侦察 — 从 OSINT 源(子域名、Shodan、GitHub、DNS、网页…)采集进资产图。不做利用。"
+    }
   },
   "findings": {
     "stat": {

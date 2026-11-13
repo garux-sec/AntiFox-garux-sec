@@ -1644,7 +1644,14 @@
     "goalEditHint": "Changing the goal steers subsequent planning (no automatic re-decompose — pair with \"Continue running\" to act on it).",
     "saved": "Task updated",
     "saveFailed": "Update failed: {{msg}}",
-    "opFailed": "Operation failed: {{msg}}"
+    "opFailed": "Operation failed: {{msg}}",
+    "mode": {
+      "label": "Task mode",
+      "pentest": "Pentest",
+      "asm": "Attack Surface (recon only)",
+      "pentestHint": "Full exploitation: plan and exploit vulnerabilities on the target.",
+      "asmHint": "Passive recon only — sweep OSINT sources (subdomains, Shodan, GitHub, DNS, web…) into the asset graph. No exploitation."
+    }
   },
   "findings": {
     "stat": {

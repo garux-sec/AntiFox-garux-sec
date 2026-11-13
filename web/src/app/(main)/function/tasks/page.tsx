@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   PlusIcon,
@@ -22,6 +23,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -129,7 +131,41 @@ export default function TasksPage() {
     [],
   );
   const [open, setOpen] = React.useState(false); // create dialog
+  const [mode, setMode] = React.useState<"pentest" | "asm">("pentest"); // create task mode
   const [editing, setEditing] = React.useState<Task | null>(null); // edit dialog target
+  const searchParams = useSearchParams();
+
+  // asmFormFor builds a passive attack-surface recon task from a domain/keyword:
+  // the agent sweeps every OSINT/recon source and populates the asset graph.
+  const asmFormFor = React.useCallback(
+    (kw: string): TaskFormValues => ({
+      ...BLANK_TASK_FORM,
+      name: `ASM recon: ${kw}`,
+      description: `Passive attack-surface recon for "${kw}" (authorized scope only). Add every reachable asset to the asset graph.`,
+      goal: `Map the complete external attack surface of "${kw}" using ALL available OSINT/recon tools, passively (do NOT exploit or brute-force):
+- crt_sh: enumerate subdomains from certificate transparency
+- dns_lookup: resolve each host (A/AAAA/CNAME/MX/NS/TXT)
+- rdap_whois: ownership/registrar for the domain and key IPs
+- shodan_host: exposed services/ports/CVEs for each resolved IP
+- github_code_search: leaked secrets/configs/references mentioning the target
+- web_search: OSINT, news and CTI mentions of the target
+- cve_lookup: CVEs for product/versions found via Shodan fingerprints
+- breach_lookup: known data breaches for the domain (if a key is configured)
+Persist findings continuously with insert_assets (root_domain/subdomain/ip/service/endpoint). Deduplicate. Stop when sources are exhausted; produce a short attack-surface summary.`,
+    }),
+    [],
+  );
+
+  // deep-link: /function/tasks?scan=<domain> opens the create dialog pre-filled
+  // as an Attack Surface recon task (used by the Attack Surface page's Scan box).
+  React.useEffect(() => {
+    const kw = searchParams.get("scan");
+    if (kw && kw.trim()) {
+      setMode("asm");
+      setForm(asmFormFor(kw.trim()));
+      setOpen(true);
+    }
+  }, [searchParams, asmFormFor]);
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<TaskStatus | "all">("all");
   const [page, setPage] = React.useState(1);
@@ -296,7 +332,10 @@ export default function TasksPage() {
           <Dialog
             open={open}
             onOpenChange={(o) => {
-              if (o) setForm(BLANK_TASK_FORM); // fresh form each time create opens
+              if (o) {
+                setMode("pentest");
+                setForm(BLANK_TASK_FORM); // fresh form each time create opens
+              }
               setOpen(o);
             }}
           >
@@ -312,6 +351,27 @@ export default function TasksPage() {
                   {t("tasks.dialogDesc")}
                 </DialogDescription>
               </DialogHeader>
+              <div className="grid gap-2">
+                <Label>{t("tasks.mode.label")}</Label>
+                <Select
+                  value={mode}
+                  onValueChange={(v) => {
+                    const m = v as "pentest" | "asm";
+                    setMode(m);
+                    // swap the goal/description template; keep what the user typed in name.
+                    setForm((f) => (m === "asm" ? { ...asmFormFor(f.name.replace(/^ASM recon: /, "") || ""), name: f.name } : { ...BLANK_TASK_FORM, name: f.name }));
+                  }}
+                >
+                  <SelectTrigger id="create-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pentest">{t("tasks.mode.pentest")}</SelectItem>
+                    <SelectItem value="asm">{t("tasks.mode.asm")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">{mode === "asm" ? t("tasks.mode.asmHint") : t("tasks.mode.pentestHint")}</p>
+              </div>
               <TaskFormFields
                 idPrefix="create"
                 values={form}

@@ -242,7 +242,6 @@ function AttackSurfaceInner() {
   const [loading, setLoading] = React.useState(true);
   const [launching, setLaunching] = React.useState(false);
   const [scanInput, setScanInput] = React.useState("");
-  const [scanning, setScanning] = React.useState(false);
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState<ASNode>([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
 
@@ -315,36 +314,14 @@ function AttackSurfaceInner() {
     [launchTask],
   );
 
-  // Auto-sweep: create a passive-recon task that runs ALL collectors against the
-  // keyword/domain and populates the asset graph, then open it so the user watches
-  // the sweep. The agent (worker) owns crt_sh/dns/shodan/github/web_search/etc.
-  const startScan = React.useCallback(async () => {
+  // Scan opens the Tasks create dialog pre-filled as an Attack Surface recon task
+  // (full form: name/goal/LLM/timeout, editable before running), where the user
+  // can also switch the mode. The deep-link carries the domain/keyword.
+  const startScan = React.useCallback(() => {
     const kw = scanInput.trim();
-    if (!kw || scanning) return;
-    setScanning(true);
-    try {
-      const task = await api.createTask(
-        `ASM recon: ${kw}`,
-        `Passive attack-surface recon for "${kw}" (authorized scope only). Add every reachable asset to the asset graph.`,
-        `Map the complete external attack surface of "${kw}" using ALL available OSINT/recon tools, passively (do NOT exploit or brute-force):
-- crt_sh: enumerate subdomains from certificate transparency
-- dns_lookup: resolve each host (A/AAAA/CNAME/MX/NS/TXT)
-- rdap_whois: ownership/registrar for the domain and key IPs
-- shodan_host: exposed services/ports/CVEs for each resolved IP
-- github_code_search: leaked secrets/configs/references mentioning the target
-- web_search: OSINT, news and CTI mentions of the target
-- cve_lookup: CVEs for any product/version found via Shodan fingerprints
-- breach_lookup: known data breaches for the domain (if a key is configured)
-Persist findings continuously with insert_assets (root_domain/subdomain/ip/service/endpoint). Deduplicate. Stop when sources are exhausted; produce a short summary of the attack surface.`,
-      );
-      toast.success(t("attackSurface.scanStarted"));
-      router.push(`/function/tasks/detail?id=${task.id}`);
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setScanning(false);
-    }
-  }, [scanInput, scanning, router, t]);
+    if (!kw) return;
+    router.push(`/function/tasks?scan=${encodeURIComponent(kw)}`);
+  }, [scanInput, router]);
 
   // the whole surface: root domains + the riskiest hosts, as one target string.
   const surfaceTarget = React.useMemo(() => {
@@ -368,14 +345,13 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
               className="h-8 w-56 text-sm"
               placeholder={t("attackSurface.scanPlaceholder")}
               value={scanInput}
-              disabled={scanning}
               onChange={(e) => setScanInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") void startScan();
+                if (e.key === "Enter") startScan();
               }}
             />
-            <Button size="sm" onClick={() => void startScan()} disabled={scanning || scanInput.trim() === ""}>
-              {scanning ? <Loader2Icon className="size-3.5 animate-spin" /> : <RadarIcon className="size-3.5" />}
+            <Button size="sm" onClick={startScan} disabled={scanInput.trim() === ""}>
+              <RadarIcon className="size-3.5" />
               {t("attackSurface.scan")}
             </Button>
           </div>

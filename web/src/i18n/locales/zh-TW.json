@@ -1644,7 +1644,14 @@
     "goalEditHint": "修改目標會引導後續規劃（不會自動重新拆解，請搭配「繼續執行」使其生效）。",
     "saved": "任務已更新",
     "saveFailed": "更新失敗：{{msg}}",
-    "opFailed": "操作失敗：{{msg}}"
+    "opFailed": "操作失敗：{{msg}}",
+    "mode": {
+      "label": "任務模式",
+      "pentest": "滲透測試",
+      "asm": "攻擊面(僅偵察)",
+      "pentestHint": "完整利用：對目標規劃並利用漏洞。",
+      "asmHint": "僅被動偵察 — 從 OSINT 來源(子網域、Shodan、GitHub、DNS、網頁…)採集進資產圖。不做利用。"
+    }
   },
   "findings": {
     "stat": {
