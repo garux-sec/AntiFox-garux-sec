@@ -330,6 +330,35 @@ func firstNonEmpty(ss ...string) string {
 	return ""
 }
 
+// syncAIReportMCP mirrors the AI-Report Settings (base URL + API key) into the
+// 'ai-report' HTTP MCP row, so the agents' MCP tools (create_report,
+// add_vulnerability, …) use the same config as the auto-push. The MCP endpoint is
+// <base>/mcp and the X-API-Key env doubles as the request header. The row is
+// enabled once both are present. Best-effort; called when the Settings change.
+func (s *Server) syncAIReportMCP() {
+	if s.m.pg == nil {
+		return
+	}
+	m, err := s.findMCPByName("ai-report")
+	if err != nil {
+		return
+	}
+	if m == nil {
+		m = &db.MCPServer{Name: "ai-report", Transport: "http", Env: json.RawMessage(`{"X-API-Key":""}`)}
+	}
+	if base := strings.TrimRight(s.m.AIReportURL(), "/"); base != "" {
+		m.URL = base + "/mcp"
+	}
+	if key := s.m.AIReportKey(); key != "" {
+		env, _ := json.Marshal(map[string]string{"X-API-Key": key})
+		m.Env = env
+	}
+	m.Enabled = m.URL != "" && envHasValue(m.Env)
+	if _, err := s.m.pg.SaveMCP(m); err != nil {
+		log.Printf("[aireport] sync MCP row failed: %v", err)
+	}
+}
+
 // pushAIReport handles POST /api/tasks/{id}/push-aireport — manual (re)send of a
 // task's findings to AI-Report, returning the created report id + count.
 func (s *Server) pushAIReport(w http.ResponseWriter, r *http.Request) {

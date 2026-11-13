@@ -221,6 +221,18 @@ ON CONFLICT (name) DO NOTHING`,
 		`["@modelcontextprotocol/server-github"]`, `{"GITHUB_PERSONAL_ACCESS_TOKEN":"<your-token>"}`); err != nil {
 		return fmt.Errorf("seed github mcp: %w", err)
 	}
+	// ai-report: push findings into the AI-Report ("AI Kill Chain") system over its
+	// HTTP MCP endpoint — create reports and add vulnerabilities as agent tools.
+	// Seeded DISABLED with a default host URL; the X-API-Key env doubles as the
+	// request header. Saving the AI-Report key in Settings syncs + enables this row
+	// (server.syncAIReportMCP); the operator can also edit it on the MCP page.
+	if _, err := d.Exec(`
+INSERT INTO mcp_servers(name, transport, url, env, enabled, description)
+VALUES ('ai-report', 'http', $1, '{"X-API-Key":""}', false, 'AI-Report (AI Kill Chain) — create pentest reports and add vulnerabilities/findings. Set the X-API-Key (or configure AI-Report in Settings), then enable.')
+ON CONFLICT (name) DO NOTHING`,
+		"http://host.docker.internal:9000/mcp"); err != nil {
+		return fmt.Errorf("seed ai-report mcp: %w", err)
+	}
 	if err := d.seedBuiltinMCPVisibility(); err != nil {
 		return fmt.Errorf("seed mcp visibility: %w", err)
 	}
@@ -330,6 +342,7 @@ var builtinMCPVisibility = map[string][]string{
 	"browser":    {"worker", "auto", "pentest"},
 	"filesystem": {"worker", "auto", "pentest"},
 	"github":     {"worker", "auto", "pentest"},
+	"ai-report":  {"worker", "auto", "pentest", "mainagent"},
 }
 
 // seedBuiltinMCPVisibility binds the shipped built-in MCP servers to their default

@@ -159,6 +159,9 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string) *Serv
 	})
 	// On task completion, auto-push confirmed findings to AI-Report (if configured).
 	s.engine.SetTaskDoneHook(s.autoPushToAIReport)
+	// If AI-Report is already configured in Settings, mirror it into the 'ai-report'
+	// MCP row (URL + X-API-Key) and enable it, so the agents' MCP tools work on boot.
+	s.syncAIReportMCP()
 	// Wire DB-stored prompt templates into the agents (新版方案 §3.3 / §5a). With no
 	// override row, agents keep their built-in defaults — behavior is unchanged.
 	if m.pg != nil {
@@ -1990,6 +1993,11 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, 500, err.Error())
 			return
 		}
+	}
+	// Mirror AI-Report URL/key into the 'ai-report' MCP row so the agents' MCP tools
+	// and the auto-push share one config.
+	if req.AIReportURL != nil || req.AIReportKey != nil {
+		s.syncAIReportMCP()
 	}
 	if req.GlobalProxy != nil {
 		if err := s.m.SetGlobalProxy(*req.GlobalProxy); err != nil {

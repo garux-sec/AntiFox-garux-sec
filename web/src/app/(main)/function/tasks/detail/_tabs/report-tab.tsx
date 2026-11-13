@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { CheckIcon, CopyIcon, DownloadIcon, FileTextIcon, Loader2Icon, SparklesIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, DownloadIcon, FileTextIcon, FileUpIcon, Loader2Icon, SparklesIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ export function ReportTab({ taskId }: { taskId: string }) {
   const [loading, setLoading] = React.useState(true);
   const [copied, setCopied] = React.useState(false);
   const [job, setJob] = React.useState<ReportJob>({ status: "idle" });
+  const [pushing, setPushing] = React.useState(false);
   const pollRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   // load the Markdown quick-view + any existing docx job state
@@ -85,6 +86,15 @@ export function ReportTab({ taskId }: { taskId: string }) {
       });
   }
 
+  function sendToAIReport() {
+    setPushing(true);
+    api
+      .pushAIReport(taskId)
+      .then((r) => toast.success(t("taskDetail.report.aireportSent", { n: r.findings })))
+      .catch((e) => toast.error(t("taskDetail.report.aireportFailed", { msg: (e as Error)?.message ?? "" })))
+      .finally(() => setPushing(false));
+  }
+
   const generating = job.status === "generating";
 
   return (
@@ -114,6 +124,10 @@ export function ReportTab({ taskId }: { taskId: string }) {
               {copied ? <CheckIcon /> : <CopyIcon />} {t("taskDetail.copy")}
             </Button>
           )}
+          <Button size="sm" variant="outline" onClick={sendToAIReport} disabled={pushing}>
+            {pushing ? <Loader2Icon className="animate-spin" /> : <FileUpIcon />}
+            {pushing ? t("taskDetail.report.aireportSending") : t("taskDetail.report.aireport")}
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

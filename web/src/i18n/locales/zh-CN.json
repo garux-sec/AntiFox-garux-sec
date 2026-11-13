@@ -1603,6 +1603,10 @@
       "download": "下载 Word 报告",
       "genStarted": "已开始生成报告，请稍候…",
       "genFailed": "报告生成失败：{{msg}}",
+      "aireport": "推送到 AI-Report",
+      "aireportSending": "推送中…",
+      "aireportSent": "已推送 {{n}} 个发现到 AI-Report",
+      "aireportFailed": "推送到 AI-Report 失败：{{msg}}",
       "docxHint": "「生成 Word 报告」调用 AI 将发现改写为专业中文叙述，并用 python-docx 排版成交付级 .docx；下方为 Markdown 快速预览。"
     }
   },

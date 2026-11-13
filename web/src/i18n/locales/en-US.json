@@ -1603,6 +1603,10 @@
       "download": "Download Word Report",
       "genStarted": "Report generation started, please wait…",
       "genFailed": "Report generation failed: {{msg}}",
+      "aireport": "Send to AI-Report",
+      "aireportSending": "Sending…",
+      "aireportSent": "Sent {{n}} finding(s) to AI-Report",
+      "aireportFailed": "Send to AI-Report failed: {{msg}}",
       "docxHint": "\"Generate Word Report\" uses AI to rewrite findings into professional prose and lays it out as a delivery-grade .docx via python-docx; the Markdown quick preview is below."
     }
   },
