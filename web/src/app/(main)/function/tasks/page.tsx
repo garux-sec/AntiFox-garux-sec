@@ -132,6 +132,7 @@ export default function TasksPage() {
   );
   const [open, setOpen] = React.useState(false); // create dialog
   const [mode, setMode] = React.useState<"pentest" | "asm">("pentest"); // create task mode
+  const [asmTarget, setAsmTarget] = React.useState(""); // domain/keyword for ASM recon mode
   const [editing, setEditing] = React.useState<Task | null>(null); // edit dialog target
   const searchParams = useSearchParams();
 
@@ -162,6 +163,7 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
     const kw = searchParams.get("scan");
     if (kw && kw.trim()) {
       setMode("asm");
+      setAsmTarget(kw.trim());
       setForm(asmFormFor(kw.trim()));
       setOpen(true);
     }
@@ -219,6 +221,10 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
   }, []);
 
   async function createTask() {
+    if (mode === "asm" && asmTarget.trim() === "") {
+      toast.error(t("tasks.mode.targetRequired"));
+      return;
+    }
     const v = taskFormToApi(form);
     if (!v.description || !v.goal) {
       toast.error(t("tasks.toast.fillDescGoal"));
@@ -334,6 +340,7 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
             onOpenChange={(o) => {
               if (o) {
                 setMode("pentest");
+                setAsmTarget("");
                 setForm(BLANK_TASK_FORM); // fresh form each time create opens
               }
               setOpen(o);
@@ -358,8 +365,7 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
                   onValueChange={(v) => {
                     const m = v as "pentest" | "asm";
                     setMode(m);
-                    // swap the goal/description template; keep what the user typed in name.
-                    setForm((f) => (m === "asm" ? { ...asmFormFor(f.name.replace(/^ASM recon: /, "") || ""), name: f.name } : { ...BLANK_TASK_FORM, name: f.name }));
+                    setForm(m === "asm" ? asmFormFor(asmTarget.trim()) : BLANK_TASK_FORM);
                   }}
                 >
                   <SelectTrigger id="create-mode">
@@ -372,6 +378,21 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
                 </Select>
                 <p className="text-muted-foreground text-xs">{mode === "asm" ? t("tasks.mode.asmHint") : t("tasks.mode.pentestHint")}</p>
               </div>
+              {mode === "asm" && (
+                <div className="grid gap-2">
+                  <Label htmlFor="asm-target">{t("tasks.mode.targetLabel")}</Label>
+                  <Input
+                    id="asm-target"
+                    placeholder="mitrphol.com"
+                    value={asmTarget}
+                    onChange={(e) => {
+                      setAsmTarget(e.target.value);
+                      setForm(asmFormFor(e.target.value.trim())); // keep name/description/goal in sync with the target
+                    }}
+                  />
+                  <p className="text-muted-foreground text-xs">{t("tasks.mode.targetHint")}</p>
+                </div>
+              )}
               <TaskFormFields
                 idPrefix="create"
                 values={form}

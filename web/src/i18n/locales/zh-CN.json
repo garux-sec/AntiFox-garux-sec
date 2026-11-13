@@ -1650,7 +1650,10 @@
       "pentest": "渗透测试",
       "asm": "攻击面(仅侦察)",
       "pentestHint": "完整利用：对目标规划并利用漏洞。",
-      "asmHint": "仅被动侦察 — 从 OSINT 源(子域名、Shodan、GitHub、DNS、网页…)采集进资产图。不做利用。"
+      "asmHint": "仅被动侦察 — 从 OSINT 源(子域名、Shodan、GitHub、DNS、网页…)采集进资产图。不做利用。",
+      "targetLabel": "目标域名 / 关键词",
+      "targetHint": "agent 会对此目标跨所有 OSINT 源进行采集(如 mitrphol.com)。",
+      "targetRequired": "请填写攻击面扫描的目标域名/关键词"
     }
   },
   "findings": {

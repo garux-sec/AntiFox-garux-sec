@@ -1650,7 +1650,10 @@
       "pentest": "滲透測試",
       "asm": "攻擊面(僅偵察)",
       "pentestHint": "完整利用：對目標規劃並利用漏洞。",
-      "asmHint": "僅被動偵察 — 從 OSINT 來源(子網域、Shodan、GitHub、DNS、網頁…)採集進資產圖。不做利用。"
+      "asmHint": "僅被動偵察 — 從 OSINT 來源(子網域、Shodan、GitHub、DNS、網頁…)採集進資產圖。不做利用。",
+      "targetLabel": "目標網域 / 關鍵字",
+      "targetHint": "agent 會對此目標跨所有 OSINT 來源進行採集(如 mitrphol.com)。",
+      "targetRequired": "請填寫攻擊面掃描的目標網域/關鍵字"
     }
   },
   "findings": {

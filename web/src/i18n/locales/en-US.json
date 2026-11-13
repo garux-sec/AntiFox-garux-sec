@@ -1650,7 +1650,10 @@
       "pentest": "Pentest",
       "asm": "Attack Surface (recon only)",
       "pentestHint": "Full exploitation: plan and exploit vulnerabilities on the target.",
-      "asmHint": "Passive recon only — sweep OSINT sources (subdomains, Shodan, GitHub, DNS, web…) into the asset graph. No exploitation."
+      "asmHint": "Passive recon only — sweep OSINT sources (subdomains, Shodan, GitHub, DNS, web…) into the asset graph. No exploitation.",
+      "targetLabel": "Target domain / keyword",
+      "targetHint": "The agent sweeps this target across all OSINT sources (e.g. mitrphol.com).",
+      "targetRequired": "Enter a target domain/keyword for the Attack Surface scan"
     }
   },
   "findings": {
