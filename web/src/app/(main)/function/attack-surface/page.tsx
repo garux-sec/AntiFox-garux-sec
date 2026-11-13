@@ -12,6 +12,7 @@ import {
   MiniMap,
   type Node as RFNode,
   type NodeProps,
+  Panel,
   Position,
   ReactFlow,
   ReactFlowProvider,
@@ -36,7 +37,7 @@ const COLOR: Record<string, string> = {
   app: "#64748b",
 };
 
-type ASNodeData = { label: string; sub: string; type: string; risky: boolean; entry: boolean };
+type ASNodeData = { label: string; sub: string; type: string; score: number; reasons: string[]; entry: boolean };
 type ASNode = RFNode<ASNodeData>;
 
 // host extracts the hostname from a URL (or returns the raw string on failure).
@@ -49,27 +50,82 @@ function host(u?: string): string {
   }
 }
 
-function isIP(s: string): boolean {
-  return /^\d{1,3}(\.\d{1,3}){3}$/.test(s) || s.includes(":");
+// riskColor maps an attack-path risk score (0-100) to a tint.
+function riskColor(score: number): string {
+  if (score >= 50) return "#ef4444"; // red — entry point / critical exposure
+  if (score >= 25) return "#f59e0b"; // amber — notable exposure
+  if (score > 0) return "#eab308"; // yellow — minor
+  return "";
+}
+
+// RISKY_PORTS are commonly-exploitable services worth flagging when open.
+const RISKY_PORTS: Record<number, string> = {
+  21: "ftp", 23: "telnet", 445: "smb", 3389: "rdp", 3306: "mysql", 5432: "postgres",
+  6379: "redis", 9200: "elasticsearch", 27017: "mongodb", 2375: "docker", 11211: "memcached", 5900: "vnc",
+};
+
+// scoreAsset computes an attack-path risk score + reasons from the asset's own
+// fields (no CVE/breach persistence needed): exposed credentials, risky open
+// ports, sensitive tech/endpoints. Higher = closer to a usable entry point.
+function scoreAsset(a: Asset): { score: number; reasons: string[] } {
+  let s = 0;
+  const r: string[] = [];
+  const creds = Array.isArray(a.auth) && a.auth.length > 0;
+  if (a.type === "service") {
+    if (creds) {
+      s += 50;
+      r.push("exposed credentials");
+    }
+    if (typeof a.status_code === "number" && a.status_code < 400) {
+      s += 8;
+      r.push("live service");
+    }
+    const tech = (a.technologies ?? []).join(" ").toLowerCase();
+    for (const k of ["jenkins", "gitlab", "phpmyadmin", "wordpress", "struts", "weblogic", "shiro", "swagger", "actuator", "grafana", "kibana"]) {
+      if (tech.includes(k)) {
+        s += 15;
+        r.push("sensitive tech: " + k);
+        break;
+      }
+    }
+  }
+  if (a.type === "ip") {
+    const risky = (a.open_ports ?? []).map((p) => p.port).filter((p) => p in RISKY_PORTS);
+    if (risky.length) {
+      s += 25;
+      r.push("risky ports: " + risky.map((p) => RISKY_PORTS[p]).join(", "));
+    }
+  }
+  if (a.type === "endpoint") {
+    if (/admin|debug|actuator|\.env|config|backup|swagger|\.git|phpinfo/i.test(a.url ?? "")) {
+      s += 20;
+      r.push("sensitive endpoint");
+    }
+    if ((a.params?.length ?? 0) > 0) s += 5;
+  }
+  return { score: Math.min(100, s), reasons: r };
 }
 
 // AssetNode is the custom React Flow node: a compact card tinted by asset type,
 // with a red ring when the asset is a likely entry point (exposed creds/service).
 function AssetNode({ data }: NodeProps<ASNode>) {
   const c = COLOR[data.type] ?? "#64748b";
+  const rc = riskColor(data.score);
   return (
     <div
-      className={cn(
-        "min-w-[150px] max-w-[220px] rounded-md border bg-card px-2.5 py-1.5 shadow-sm",
-        data.entry && "ring-2 ring-red-500/60",
-      )}
-      style={{ borderColor: c }}
+      className={cn("min-w-[150px] max-w-[220px] rounded-md border bg-card px-2.5 py-1.5 shadow-sm")}
+      style={rc ? { borderColor: rc, boxShadow: `0 0 0 1.5px ${rc}55` } : { borderColor: c }}
+      title={data.reasons.join(" · ")}
     >
       <Handle type="target" position={Position.Left} className="!size-1.5 !border-0" style={{ background: c }} />
       <div className="flex items-center gap-1.5">
         <span className="size-2 shrink-0 rounded-full" style={{ background: c }} />
         <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">{data.type.replace("_", " ")}</span>
-        {data.risky && <ShieldAlertIcon className="ml-auto size-3 text-red-400" />}
+        {data.score >= 50 ? (
+          <ShieldAlertIcon className="ml-auto size-3 text-red-400" />
+        ) : data.score > 0 ? (
+          <span className="ml-auto rounded px-1 text-[8px] font-semibold tabular-nums" style={{ background: rc + "22", color: rc }}>{data.score}</span>
+        ) : null}
       </div>
       <div className="mt-0.5 truncate font-mono text-[11px] font-medium" title={data.label}>{data.label}</div>
       {data.sub && <div className="truncate text-[9px] text-muted-foreground" title={data.sub}>{data.sub}</div>}
@@ -147,9 +203,8 @@ function buildGraph(assets: Asset[]): { nodes: ASNode[]; edges: RFEdge[] } {
   const nodes: ASNode[] = assets.map((a) => {
     const tier = TIER[a.type] ?? 2;
     const row = (perTier[tier] = (perTier[tier] ?? 0) + 1) - 1;
-    const hasCreds = Array.isArray(a.auth) && a.auth.length > 0;
-    const risky = a.type === "service" && (hasCreds || (a.open_ports?.length ?? 0) > 0);
-    const entry = a.type === "service" && hasCreds;
+    const { score, reasons } = scoreAsset(a);
+    const entry = score >= 50;
     const label =
       a.domain || a.ip || (a.url ? host(a.url) + (new URL(a.url, "http://x").pathname || "") : "") || a.service_name || a.app_name || `#${a.id}`;
     const sub =
@@ -168,7 +223,7 @@ function buildGraph(assets: Asset[]): { nodes: ASNode[]; edges: RFEdge[] } {
       position: { x: tier * 300 + 40, y: row * 78 + 40 },
       sourcePosition: Position.Right,
       targetPosition: Position.Left,
-      data: { label: String(label), sub: String(sub), type: a.type, risky, entry },
+      data: { label: String(label), sub: String(sub), type: a.type, score, reasons, entry },
     };
   });
 
@@ -203,6 +258,10 @@ function AttackSurfaceInner() {
     return c;
   }, [assets]);
   const entryPoints = nodes.filter((n) => n.data.entry).length;
+  const topRisks = React.useMemo(
+    () => nodes.filter((n) => n.data.score > 0).sort((a, b) => b.data.score - a.data.score).slice(0, 6),
+    [nodes],
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-3 pb-4">
@@ -255,7 +314,25 @@ function AttackSurfaceInner() {
           >
             <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
             <Controls showInteractive={false} />
-            <MiniMap pannable zoomable nodeColor={(n) => COLOR[(n.data as ASNodeData)?.type] ?? "#64748b"} />
+            <MiniMap pannable zoomable nodeColor={(n) => riskColor((n.data as ASNodeData)?.score ?? 0) || (COLOR[(n.data as ASNodeData)?.type] ?? "#64748b")} />
+            {topRisks.length > 0 && (
+              <Panel position="top-right" className="!m-2 w-64 rounded-lg border bg-card/95 p-2.5 shadow-md backdrop-blur">
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold">
+                  <ShieldAlertIcon className="size-3.5 text-red-400" /> {t("attackSurface.topRisks")}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {topRisks.map((n) => (
+                    <div key={n.id} className="text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="rounded px-1 font-semibold tabular-nums" style={{ background: (riskColor(n.data.score) || "#64748b") + "22", color: riskColor(n.data.score) || "#64748b" }}>{n.data.score}</span>
+                        <span className="truncate font-mono" title={n.data.label}>{n.data.label}</span>
+                      </div>
+                      <div className="truncate pl-1 text-[9px] text-muted-foreground" title={n.data.reasons.join(" · ")}>{n.data.reasons.join(" · ")}</div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            )}
           </ReactFlow>
         )}
       </div>

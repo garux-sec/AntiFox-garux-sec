@@ -43,6 +43,10 @@ export default function SystemSettingsPage() {
   const [shodanKeyInput, setShodanKeyInput] = React.useState("");
   const [githubTokenSet, setGithubTokenSet] = React.useState(false);
   const [githubTokenInput, setGithubTokenInput] = React.useState("");
+  const [hibpKeySet, setHibpKeySet] = React.useState(false);
+  const [hibpKeyInput, setHibpKeyInput] = React.useState("");
+  const [nvdKeySet, setNvdKeySet] = React.useState(false);
+  const [nvdKeyInput, setNvdKeyInput] = React.useState("");
   const [savingRecon, setSavingRecon] = React.useState(false);
   const [globalProxy, setGlobalProxy] = React.useState("");
   const [savingGlobalProxy, setSavingGlobalProxy] = React.useState(false);
@@ -62,6 +66,8 @@ export default function SystemSettingsPage() {
     setCostLimit(String(s.cost_limit_usd ?? 0));
     setShodanKeySet(!!s.shodan_key_set);
     setGithubTokenSet(!!s.github_token_set);
+    setHibpKeySet(!!s.hibp_key_set);
+    setNvdKeySet(!!s.nvd_key_set);
   }, []);
 
   const saveReconKeys = (patch: Partial<Settings>) => {
@@ -72,6 +78,8 @@ export default function SystemSettingsPage() {
         apply(s);
         setShodanKeyInput("");
         setGithubTokenInput("");
+        setHibpKeyInput("");
+        setNvdKeyInput("");
         toast.success(t("settings.recon.saved"));
       })
       .catch((e) => toast.error(t("settings.saveFailed", { msg: (e as Error).message })))
@@ -649,6 +657,46 @@ export default function SystemSettingsPage() {
                 onChange={(e) => setGithubTokenInput(e.target.value)}
               />
               <Button type="button" onClick={() => saveReconKeys({ github_token: githubTokenInput })} disabled={!loaded || savingRecon || githubTokenInput.trim() === ""}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="hibp-key" className="text-sm font-normal text-muted-foreground">
+              Have I Been Pwned API Key
+              {hibpKeySet && <span className="ml-2 text-xs text-emerald-500">{t("settings.webSearch.keySet")}</span>}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="hibp-key"
+                type="password"
+                autoComplete="off"
+                placeholder={hibpKeySet ? t("settings.webSearch.keySetPlaceholder") : "HIBP API key (breach lookups)"}
+                value={hibpKeyInput}
+                disabled={!loaded || savingRecon}
+                onChange={(e) => setHibpKeyInput(e.target.value)}
+              />
+              <Button type="button" onClick={() => saveReconKeys({ hibp_api_key: hibpKeyInput })} disabled={!loaded || savingRecon || hibpKeyInput.trim() === ""}>
+                {t("common.save")}
+              </Button>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="nvd-key" className="text-sm font-normal text-muted-foreground">
+              NVD API Key <span className="text-xs">({t("common.optional")})</span>
+              {nvdKeySet && <span className="ml-2 text-xs text-emerald-500">{t("settings.webSearch.keySet")}</span>}
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="nvd-key"
+                type="password"
+                autoComplete="off"
+                placeholder={nvdKeySet ? t("settings.webSearch.keySetPlaceholder") : "NVD API key (higher CVE-lookup rate limit)"}
+                value={nvdKeyInput}
+                disabled={!loaded || savingRecon}
+                onChange={(e) => setNvdKeyInput(e.target.value)}
+              />
+              <Button type="button" onClick={() => saveReconKeys({ nvd_api_key: nvdKeyInput })} disabled={!loaded || savingRecon || nvdKeyInput.trim() === ""}>
                 {t("common.save")}
               </Button>
             </div>

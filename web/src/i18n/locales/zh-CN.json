@@ -218,7 +218,8 @@
       "recent": "最近 Todo",
       "empty": "（空）"
     },
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "optional": "可选"
   },
   "login": {
     "title": "登录",
@@ -1979,6 +1980,7 @@
     "title": "攻击面",
     "subtitle": "侦察发现的资产，按可达路径连成图。红圈=疑似入口点(暴露的凭据/服务)。",
     "empty": "暂无资产。先运行侦察(通过 agent 调 crt.sh / DNS / Shodan / GitHub)来填充攻击面。",
-    "entryPoints": "{{count}} 个入口点"
+    "entryPoints": "{{count}} 个入口点",
+    "topRisks": "主要风险"
   }
 }

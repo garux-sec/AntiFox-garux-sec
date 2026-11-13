@@ -31,6 +31,8 @@ import (
 var ReconKeys struct {
 	Shodan func() string // Shodan API key provider
 	Github func() string // GitHub token provider
+	HIBP   func() string // Have I Been Pwned API key provider
+	NVD    func() string // optional NVD API key (higher rate limit)
 }
 
 func reconKey(fn func() string) string {
@@ -73,6 +75,8 @@ func (t *ToolSet) ReconTools() []actool.CoreTool {
 		t.rdapWhois(),
 		t.shodanHost(),
 		t.githubCodeSearch(),
+		t.cveLookup(),
+		t.breachLookup(),
 	}
 }
 
@@ -384,6 +388,145 @@ func (t *ToolSet) githubCodeSearch() actool.CoreTool {
 				})
 			}
 			return jsonResult(map[string]any{"query": q, "total_count": raw.TotalCount, "items": items})
+		},
+	)
+}
+
+// ─── CVE lookup (NVD) — CTI enrichment ───────────────────────────────────────
+func (t *ToolSet) cveLookup() actool.CoreTool {
+	return readTool(
+		"cve_lookup",
+		"Look up known CVEs for a product/version or a specific CVE id via the NVD database, to turn exposed-service fingerprints (from shodan_host) into concrete, scorable weaknesses. Returns id, CVSS score/severity and summary. Passive, no key required (an optional NVD key raises the rate limit).",
+		obj(map[string]any{
+			"keyword": str("Product/version or technology to search, e.g. \"Apache httpd 2.4.49\" or \"log4j\""),
+			"cve_id":  str("A specific CVE id to fetch, e.g. CVE-2021-44228 (optional; overrides keyword)"),
+		}),
+		func(ctx context.Context, in json.RawMessage) (actool.Result, error) {
+			var a struct {
+				Keyword string `json:"keyword"`
+				CVEID   string `json:"cve_id"`
+			}
+			_ = json.Unmarshal(in, &a)
+			kw := strings.TrimSpace(a.Keyword)
+			cve := strings.TrimSpace(a.CVEID)
+			if kw == "" && cve == "" {
+				return actool.Errorf("provide a keyword or a cve_id"), nil
+			}
+			endpoint := "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=15&"
+			if cve != "" {
+				endpoint += "cveId=" + url.QueryEscape(strings.ToUpper(cve))
+			} else {
+				endpoint += "keywordSearch=" + url.QueryEscape(kw)
+			}
+			headers := map[string]string{}
+			if k := reconKey(ReconKeys.NVD); k != "" {
+				headers["apiKey"] = k
+			}
+			code, body, err := reconGet(ctx, endpoint, headers)
+			if err != nil {
+				return actool.Errorf("nvd request failed: " + err.Error()), nil
+			}
+			if code != http.StatusOK {
+				return actool.Errorf(fmt.Sprintf("nvd returned HTTP %d (it rate-limits unauthenticated calls — retry shortly or set an NVD key)", code)), nil
+			}
+			var raw struct {
+				Vulnerabilities []struct {
+					CVE struct {
+						ID           string `json:"id"`
+						Descriptions []struct {
+							Lang  string `json:"lang"`
+							Value string `json:"value"`
+						} `json:"descriptions"`
+						Metrics map[string][]struct {
+							CVSSData struct {
+								BaseScore    float64 `json:"baseScore"`
+								BaseSeverity string  `json:"baseSeverity"`
+							} `json:"cvssData"`
+						} `json:"metrics"`
+					} `json:"cve"`
+				} `json:"vulnerabilities"`
+			}
+			if err := json.Unmarshal(body, &raw); err != nil {
+				return actool.Errorf("could not parse nvd response: " + err.Error()), nil
+			}
+			out := make([]map[string]any, 0, len(raw.Vulnerabilities))
+			for _, v := range raw.Vulnerabilities {
+				var score float64
+				var sev string
+				for _, key := range []string{"cvssMetricV31", "cvssMetricV30", "cvssMetricV2"} {
+					if m, ok := v.CVE.Metrics[key]; ok && len(m) > 0 {
+						score = m[0].CVSSData.BaseScore
+						sev = m[0].CVSSData.BaseSeverity
+						break
+					}
+				}
+				desc := ""
+				for _, d := range v.CVE.Descriptions {
+					if d.Lang == "en" {
+						desc = d.Value
+						break
+					}
+				}
+				if len(desc) > 300 {
+					desc = desc[:300]
+				}
+				out = append(out, map[string]any{"id": v.CVE.ID, "cvss": score, "severity": sev, "summary": desc})
+			}
+			return jsonResult(map[string]any{"count": len(out), "cves": out})
+		},
+	)
+}
+
+// ─── Breach lookup (Have I Been Pwned) — leaked-data CTI ──────────────────────
+func (t *ToolSet) breachLookup() actool.CoreTool {
+	return readTool(
+		"breach_lookup",
+		"Check Have I Been Pwned for known data breaches affecting a domain (which company emails appeared in which breach, and what data classes leaked). Requires an HIBP API key (set in Settings). Use only for domains in your authorized scope; do not fetch or store individual victims' personal data beyond what is needed. Passive.",
+		obj(map[string]any{
+			"domain": str("Organization domain to check for breaches, e.g. example.com"),
+		}, "domain"),
+		func(ctx context.Context, in json.RawMessage) (actool.Result, error) {
+			var a struct {
+				Domain string `json:"domain"`
+			}
+			_ = json.Unmarshal(in, &a)
+			dom := strings.TrimSpace(strings.ToLower(a.Domain))
+			if dom == "" {
+				return actool.Errorf("domain is required"), nil
+			}
+			key := reconKey(ReconKeys.HIBP)
+			if key == "" {
+				return actool.Errorf("breach_lookup requires a Have I Been Pwned API key (set it in Settings)"), nil
+			}
+			code, body, err := reconGet(ctx, "https://haveibeenpwned.com/api/v3/breaches?Domain="+url.QueryEscape(dom), map[string]string{
+				"hibp-api-key": key,
+			})
+			if err != nil {
+				return actool.Errorf("hibp request failed: " + err.Error()), nil
+			}
+			if code == http.StatusNotFound {
+				return jsonResult(map[string]any{"domain": dom, "count": 0, "breaches": []any{}})
+			}
+			if code != http.StatusOK {
+				return actool.Errorf(fmt.Sprintf("hibp returned HTTP %d", code)), nil
+			}
+			var raw []struct {
+				Name        string   `json:"Name"`
+				Title       string   `json:"Title"`
+				BreachDate  string   `json:"BreachDate"`
+				PwnCount    int      `json:"PwnCount"`
+				DataClasses []string `json:"DataClasses"`
+			}
+			if err := json.Unmarshal(body, &raw); err != nil {
+				return actool.Errorf("could not parse hibp response: " + err.Error()), nil
+			}
+			out := make([]map[string]any, 0, len(raw))
+			for _, b := range raw {
+				out = append(out, map[string]any{
+					"name": b.Title, "date": b.BreachDate, "pwn_count": b.PwnCount, "data_classes": b.DataClasses,
+				})
+			}
+			return jsonResult(map[string]any{"domain": dom, "count": len(out), "breaches": out})
 		},
 	)
 }

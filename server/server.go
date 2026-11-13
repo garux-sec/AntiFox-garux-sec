@@ -206,6 +206,8 @@ func New(ctx context.Context, m *Manager, skillDir string, dataDir string) *Serv
 		domainReg := buildDomainReg(m.Assets())
 		agent.ReconKeys.Shodan = m.ShodanKey            // ASM recon collectors read keys lazily from settings
 		agent.ReconKeys.Github = m.GithubToken
+		agent.ReconKeys.HIBP = m.HIBPKey
+		agent.ReconKeys.NVD = m.NVDKey
 		wireTools(m.pg, domainReg)                      // 内置工具表：按 agent 过滤 + 覆盖描述/schema + 注入默认值
 		seedPrompts(m.pg)                               // 内置 agent 默认提示词正文播种进 agent_prompts(仅空时)
 		s.seedOrchestrationTools()                      // P2 跨任务编排工具 seed 进 tools 表(可按 agent 绑定)
@@ -1874,6 +1876,8 @@ func (s *Server) settingsPayload() map[string]any {
 		"cost_limit_usd":      s.m.CostLimitUSD(),          // per-task est-cost budget in USD (0=off); task auto-pauses when reached
 		"shodan_key_set":      s.m.ShodanKey() != "",       // whether a Shodan API key is stored (value never returned)
 		"github_token_set":    s.m.GithubToken() != "",     // whether a GitHub token is stored (value never returned)
+		"hibp_key_set":        s.m.HIBPKey() != "",         // whether an HIBP API key is stored
+		"nvd_key_set":         s.m.NVDKey() != "",          // whether an NVD API key is stored
 	}
 }
 
@@ -1911,6 +1915,8 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 		CostLimitUSD     *float64 `json:"cost_limit_usd"`     // per-task est-cost budget USD (>=0, 0=off)
 		ShodanKey        *string  `json:"shodan_api_key"`     // Shodan API key; null=unchanged, ""=clear
 		GithubToken      *string  `json:"github_token"`       // GitHub token; null=unchanged, ""=clear
+		HIBPKey          *string  `json:"hibp_api_key"`       // HIBP API key; null=unchanged, ""=clear
+		NVDKey           *string  `json:"nvd_api_key"`        // NVD API key; null=unchanged, ""=clear
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeErr(w, 400, err.Error())
@@ -1936,6 +1942,18 @@ func (s *Server) putSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.GithubToken != nil {
 		if err := s.m.pg.SetSetting(settingGithubToken, strings.TrimSpace(*req.GithubToken)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.HIBPKey != nil {
+		if err := s.m.pg.SetSetting(settingHIBPKey, strings.TrimSpace(*req.HIBPKey)); err != nil {
+			writeErr(w, 500, err.Error())
+			return
+		}
+	}
+	if req.NVDKey != nil {
+		if err := s.m.pg.SetSetting(settingNVDKey, strings.TrimSpace(*req.NVDKey)); err != nil {
 			writeErr(w, 500, err.Error())
 			return
 		}

@@ -91,6 +91,8 @@ const (
 	settingCostLimitUSD     = "cost_limit_usd"   // per-task estimated-cost budget in USD; 0/unset = off (no auto-pause)
 	settingShodanKey        = "shodan_api_key"   // Shodan API key for ASM/OSINT recon collectors
 	settingGithubToken      = "github_token"     // GitHub token for code-search recon (secret/config leaks)
+	settingHIBPKey          = "hibp_api_key"     // Have I Been Pwned API key for breach lookups
+	settingNVDKey           = "nvd_api_key"      // optional NVD API key (raises CVE-lookup rate limit)
 	// defaultWebSearchBackend is used when web search is on but no backend was picked.
 	defaultWebSearchBackend = "ddgs"
 	// defaultWorkers is the concurrent work-agent count when the setting is unset.
@@ -166,6 +168,18 @@ func (m *Manager) ShodanKey() string {
 // GithubToken returns the stored GitHub token for code-search recon (empty = unset).
 func (m *Manager) GithubToken() string {
 	v, _, _ := m.pg.GetSetting(settingGithubToken)
+	return strings.TrimSpace(v)
+}
+
+// HIBPKey returns the stored Have I Been Pwned API key (empty = unset).
+func (m *Manager) HIBPKey() string {
+	v, _, _ := m.pg.GetSetting(settingHIBPKey)
+	return strings.TrimSpace(v)
+}
+
+// NVDKey returns the optional NVD API key for CVE lookups (empty = unauthenticated).
+func (m *Manager) NVDKey() string {
+	v, _, _ := m.pg.GetSetting(settingNVDKey)
 	return strings.TrimSpace(v)
 }
 

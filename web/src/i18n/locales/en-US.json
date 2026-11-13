@@ -218,7 +218,8 @@
       "recent": "Recent Todo",
       "empty": "(empty)"
     },
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "optional": "optional"
   },
   "login": {
     "title": "Sign In",
@@ -1979,6 +1980,7 @@
     "title": "Attack Surface",
     "subtitle": "Assets discovered by recon, linked into reachability paths. Red ring = likely entry point (exposed credentials/service).",
     "empty": "No assets yet. Run recon (crt.sh / DNS / Shodan / GitHub via the agent) to populate the attack surface.",
-    "entryPoints": "{{count}} entry point(s)"
+    "entryPoints": "{{count}} entry point(s)",
+    "topRisks": "Top risks"
   }
 }

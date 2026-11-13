@@ -486,7 +486,7 @@ func (t *ToolSet) WorkerTools() []actool.CoreTool {
 		// knowledge base (global + this task); nil store guarded internally
 		t.searchKnowledge(), t.listKnowledgeCategories(),
 		// ASM / OSINT passive recon collectors
-		t.crtSh(), t.dnsLookup(), t.rdapWhois(), t.shodanHost(), t.githubCodeSearch(),
+		t.crtSh(), t.dnsLookup(), t.rdapWhois(), t.shodanHost(), t.githubCodeSearch(), t.cveLookup(), t.breachLookup(),
 	}
 }
 
@@ -500,7 +500,7 @@ func (t *ToolSet) MainAgentTools() []actool.CoreTool {
 		// knowledge base (global + this task)
 		t.searchKnowledge(), t.listKnowledgeCategories(),
 		// ASM / OSINT passive recon collectors
-		t.crtSh(), t.dnsLookup(), t.rdapWhois(), t.shodanHost(), t.githubCodeSearch(),
+		t.crtSh(), t.dnsLookup(), t.rdapWhois(), t.shodanHost(), t.githubCodeSearch(), t.cveLookup(), t.breachLookup(),
 	}
 }
 

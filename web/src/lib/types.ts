@@ -440,8 +440,12 @@ export interface Settings {
   // ASM/OSINT recon API keys. *_set reflects whether a key is stored (value never returned). On PUT, send the key field to set/clear.
   shodan_key_set?: boolean;
   github_token_set?: boolean;
+  hibp_key_set?: boolean;
+  nvd_key_set?: boolean;
   shodan_api_key?: string; // write-only
   github_token?: string; // write-only
+  hibp_api_key?: string; // write-only
+  nvd_api_key?: string; // write-only
 }
 
 // ---- 一键更新 ----
