@@ -16,10 +16,14 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
-import { Loader2Icon, RefreshCwIcon, WaypointsIcon, ShieldAlertIcon } from "lucide-react";
+import { Loader2Icon, RefreshCwIcon, WaypointsIcon, ShieldAlertIcon, CrosshairIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import type { Asset } from "@/lib/types";
@@ -232,8 +236,12 @@ function buildGraph(assets: Asset[]): { nodes: ASNode[]; edges: RFEdge[] } {
 
 function AttackSurfaceInner() {
   const { t } = useTranslation();
+  const router = useRouter();
   const [assets, setAssets] = React.useState<Asset[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [launching, setLaunching] = React.useState(false);
+  const [rfNodes, setRfNodes, onNodesChange] = useNodesState<ASNode>([]);
+  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState<RFEdge>([]);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -252,6 +260,13 @@ function AttackSurfaceInner() {
 
   const { nodes, edges } = React.useMemo(() => buildGraph(assets), [assets]);
 
+  // push the computed graph into React Flow's state (matches the Exploration
+  // Graph pattern; rendering from static props left the canvas blank).
+  React.useEffect(() => {
+    setRfNodes(nodes);
+    setRfEdges(edges);
+  }, [nodes, edges, setRfNodes, setRfEdges]);
+
   const counts = React.useMemo(() => {
     const c: Record<string, number> = {};
     for (const a of assets) c[a.type] = (c[a.type] ?? 0) + 1;
@@ -263,6 +278,47 @@ function AttackSurfaceInner() {
     [nodes],
   );
 
+  // launch a pentest task; target = a specific asset (node click) or the whole
+  // discovered surface (header button). Navigates to the new task on success.
+  const launchTask = React.useCallback(
+    async (target: string, name: string) => {
+      if (launching) return;
+      const ok = window.confirm(t("attackSurface.launchConfirm", { target }));
+      if (!ok) return;
+      setLaunching(true);
+      try {
+        const task = await api.createTask(
+          name,
+          `Pentest the target(s) discovered by attack-surface recon: ${target}. Authorized scope only.`,
+          "Following OWASP Top 10 2025, find and confirm vulnerabilities; prioritize entry points (exposed credentials/services). Provide PoCs.",
+        );
+        toast.success(t("attackSurface.launched"));
+        router.push(`/function/tasks/detail?id=${task.id}`);
+      } catch (e) {
+        toast.error((e as Error).message);
+      } finally {
+        setLaunching(false);
+      }
+    },
+    [launching, router, t],
+  );
+
+  const onNodeClick = React.useCallback(
+    (_: React.MouseEvent, node: ASNode) => {
+      const target = node.data.label;
+      if (!target) return;
+      void launchTask(target, `Pentest ${target}`);
+    },
+    [launchTask],
+  );
+
+  // the whole surface: root domains + the riskiest hosts, as one target string.
+  const surfaceTarget = React.useMemo(() => {
+    const roots = assets.filter((a) => a.type === "root_domain").map((a) => a.domain).filter(Boolean);
+    const svc = topRisks.map((n) => n.data.label);
+    return [...new Set([...roots, ...svc])].slice(0, 12).join(", ");
+  }, [assets, topRisks]);
+
   return (
     <div className="flex flex-1 flex-col gap-3 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -272,10 +328,20 @@ function AttackSurfaceInner() {
           </h1>
           <p className="text-xs text-muted-foreground">{t("attackSurface.subtitle")}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-          {loading ? <Loader2Icon className="size-3.5 animate-spin" /> : <RefreshCwIcon className="size-3.5" />}
-          {t("common.refresh")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => void launchTask(surfaceTarget, "Attack Surface pentest")}
+            disabled={loading || launching || !surfaceTarget}
+          >
+            {launching ? <Loader2Icon className="size-3.5 animate-spin" /> : <CrosshairIcon className="size-3.5" />}
+            {t("attackSurface.launch")}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
+            {loading ? <Loader2Icon className="size-3.5 animate-spin" /> : <RefreshCwIcon className="size-3.5" />}
+            {t("common.refresh")}
+          </Button>
+        </div>
       </div>
 
       {/* legend + counts */}
@@ -293,7 +359,7 @@ function AttackSurfaceInner() {
         )}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-card" style={{ height: "calc(100vh - 13rem)" }}>
+      <div className="h-[calc(100vh-13rem)] w-full overflow-hidden rounded-lg border bg-card">
         {loading ? (
           <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
             <Loader2Icon className="size-4 animate-spin" /> {t("common.loading")}
@@ -305,11 +371,14 @@ function AttackSurfaceInner() {
           </div>
         ) : (
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={rfNodes}
+            edges={rfEdges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
             nodeTypes={nodeTypes}
             fitView
-            minZoom={0.1}
+            minZoom={0.05}
             proOptions={{ hideAttribution: true }}
           >
             <Background variant={BackgroundVariant.Dots} gap={18} size={1} />

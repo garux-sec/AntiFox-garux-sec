@@ -1981,6 +1981,9 @@
     "subtitle": "侦察发现的资产，按可达路径连成图。红圈=疑似入口点(暴露的凭据/服务)。",
     "empty": "暂无资产。先运行侦察(通过 agent 调 crt.sh / DNS / Shodan / GitHub)来填充攻击面。",
     "entryPoints": "{{count}} 个入口点",
-    "topRisks": "主要风险"
+    "topRisks": "主要风险",
+    "launch": "发起渗透",
+    "launched": "已创建渗透任务",
+    "launchConfirm": "对以下目标创建渗透任务：{{target}} ？\n\n(会执行主动利用 — 仅限授权范围。)"
   }
 }
