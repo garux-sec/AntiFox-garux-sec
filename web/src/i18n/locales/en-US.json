@@ -1653,7 +1653,12 @@
       "asmHint": "Passive recon only — sweep OSINT sources (subdomains, Shodan, GitHub, DNS, web…) into the asset graph. No exploitation.",
       "targetLabel": "Target domain / keyword",
       "targetHint": "The agent sweeps this target across all OSINT sources (e.g. mitrphol.com).",
-      "targetRequired": "Enter a target domain/keyword for the Attack Surface scan"
+      "targetRequired": "Enter a target domain/keyword for the Attack Surface scan",
+      "whitebox": "White box (with source code)",
+      "whiteboxHint": "Source-informed pentest: pull in a repo or local folder, review the code (SAST), then confirm exploitable issues.",
+      "sourceLabel": "Source code (repo URL or local folder)",
+      "sourceHint": "Git URL (GitHub / Azure DevOps / GitLab — a private repo can embed a token) or a folder path the AntiFox container can read (e.g. under /app/data). git must be available for cloning.",
+      "sourceRequired": "Enter a source repo URL or local folder for white-box mode"
     }
   },
   "findings": {

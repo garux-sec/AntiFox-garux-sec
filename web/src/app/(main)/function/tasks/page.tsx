@@ -131,10 +131,29 @@ export default function TasksPage() {
     [],
   );
   const [open, setOpen] = React.useState(false); // create dialog
-  const [mode, setMode] = React.useState<"pentest" | "asm">("pentest"); // create task mode
+  const [mode, setMode] = React.useState<"pentest" | "whitebox" | "asm">("pentest"); // create task mode
   const [asmTarget, setAsmTarget] = React.useState(""); // domain/keyword for ASM recon mode
+  const [wbSource, setWbSource] = React.useState(""); // repo URL / local folder for white-box mode
   const [editing, setEditing] = React.useState<Task | null>(null); // edit dialog target
   const searchParams = useSearchParams();
+
+  // whiteboxFormFor builds a white-box pentest task: the agent pulls in the given
+  // source code (git repo or local folder) and does code-informed testing.
+  const whiteboxFormFor = React.useCallback(
+    (src: string): TaskFormValues => ({
+      ...BLANK_TASK_FORM,
+      name: `White-box pentest: ${src}`,
+      description: `White-box penetration test with source code: ${src}. Authorized scope only.`,
+      goal: `White-box penetration test. The target's source code is at: ${src}
+1. Obtain the code into your working directory:
+   - Git URL (GitHub / Azure DevOps / GitLab / etc.): shallow-clone it, e.g. git clone --depth 1 ${src} src (for a private repo the URL may embed a token).
+   - Local folder path: read it directly from that path.
+2. Review the source for vulnerabilities (SAST-style) with the code-review skill: injection (SQLi / command / SSTI), broken auth/access control, hardcoded secrets & keys, insecure deserialization, SSRF, path traversal, insecure configuration, and vulnerable dependencies. Cite file:line evidence.
+3. Where a live target is in scope, confirm exploitability with a PoC.
+4. Record each finding and map it to OWASP Top 10 2025.`,
+    }),
+    [],
+  );
 
   // asmFormFor builds a passive attack-surface recon task from a domain/keyword:
   // the agent sweeps every OSINT/recon source and populates the asset graph.
@@ -223,6 +242,10 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
   async function createTask() {
     if (mode === "asm" && asmTarget.trim() === "") {
       toast.error(t("tasks.mode.targetRequired"));
+      return;
+    }
+    if (mode === "whitebox" && wbSource.trim() === "") {
+      toast.error(t("tasks.mode.sourceRequired"));
       return;
     }
     const v = taskFormToApi(form);
@@ -341,6 +364,7 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
               if (o) {
                 setMode("pentest");
                 setAsmTarget("");
+                setWbSource("");
                 setForm(BLANK_TASK_FORM); // fresh form each time create opens
               }
               setOpen(o);
@@ -363,9 +387,9 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
                 <Select
                   value={mode}
                   onValueChange={(v) => {
-                    const m = v as "pentest" | "asm";
+                    const m = v as "pentest" | "whitebox" | "asm";
                     setMode(m);
-                    setForm(m === "asm" ? asmFormFor(asmTarget.trim()) : BLANK_TASK_FORM);
+                    setForm(m === "asm" ? asmFormFor(asmTarget.trim()) : m === "whitebox" ? whiteboxFormFor(wbSource.trim()) : BLANK_TASK_FORM);
                   }}
                 >
                   <SelectTrigger id="create-mode">
@@ -373,10 +397,13 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pentest">{t("tasks.mode.pentest")}</SelectItem>
+                    <SelectItem value="whitebox">{t("tasks.mode.whitebox")}</SelectItem>
                     <SelectItem value="asm">{t("tasks.mode.asm")}</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-muted-foreground text-xs">{mode === "asm" ? t("tasks.mode.asmHint") : t("tasks.mode.pentestHint")}</p>
+                <p className="text-muted-foreground text-xs">
+                  {mode === "asm" ? t("tasks.mode.asmHint") : mode === "whitebox" ? t("tasks.mode.whiteboxHint") : t("tasks.mode.pentestHint")}
+                </p>
               </div>
               {mode === "asm" && (
                 <div className="grid gap-2">
@@ -391,6 +418,22 @@ Persist findings continuously with insert_assets (root_domain/subdomain/ip/servi
                     }}
                   />
                   <p className="text-muted-foreground text-xs">{t("tasks.mode.targetHint")}</p>
+                </div>
+              )}
+              {mode === "whitebox" && (
+                <div className="grid gap-2">
+                  <Label htmlFor="wb-source">{t("tasks.mode.sourceLabel")}</Label>
+                  <Input
+                    id="wb-source"
+                    className="font-mono text-sm"
+                    placeholder="https://github.com/org/repo  ·  /app/data/code/myrepo"
+                    value={wbSource}
+                    onChange={(e) => {
+                      setWbSource(e.target.value);
+                      setForm(whiteboxFormFor(e.target.value.trim()));
+                    }}
+                  />
+                  <p className="text-muted-foreground text-xs">{t("tasks.mode.sourceHint")}</p>
                 </div>
               )}
               <TaskFormFields

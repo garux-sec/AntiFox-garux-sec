@@ -1653,7 +1653,12 @@
       "asmHint": "仅被动侦察 — 从 OSINT 源(子域名、Shodan、GitHub、DNS、网页…)采集进资产图。不做利用。",
       "targetLabel": "目标域名 / 关键词",
       "targetHint": "agent 会对此目标跨所有 OSINT 源进行采集(如 mitrphol.com)。",
-      "targetRequired": "请填写攻击面扫描的目标域名/关键词"
+      "targetRequired": "请填写攻击面扫描的目标域名/关键词",
+      "whitebox": "白盒(含源代码)",
+      "whiteboxHint": "结合源码的渗透：拉取 repo 或本地目录,审计代码(SAST),再验证可利用问题。",
+      "sourceLabel": "源代码(repo 地址或本地目录)",
+      "sourceHint": "Git 地址(GitHub / Azure DevOps / GitLab — 私有库可在 URL 内嵌 token)或 AntiFox 容器可读取的目录路径(如 /app/data 下)。克隆需要有 git。",
+      "sourceRequired": "白盒模式请填写源码 repo 地址或本地目录"
     }
   },
   "findings": {

@@ -1653,7 +1653,12 @@
       "asmHint": "僅被動偵察 — 從 OSINT 來源(子網域、Shodan、GitHub、DNS、網頁…)採集進資產圖。不做利用。",
       "targetLabel": "目標網域 / 關鍵字",
       "targetHint": "agent 會對此目標跨所有 OSINT 來源進行採集(如 mitrphol.com)。",
-      "targetRequired": "請填寫攻擊面掃描的目標網域/關鍵字"
+      "targetRequired": "請填寫攻擊面掃描的目標網域/關鍵字",
+      "whitebox": "白箱(含原始碼)",
+      "whiteboxHint": "結合原始碼的滲透:拉取 repo 或本地目錄,稽核程式碼(SAST),再驗證可利用問題。",
+      "sourceLabel": "原始碼(repo 位址或本地目錄)",
+      "sourceHint": "Git 位址(GitHub / Azure DevOps / GitLab — 私有庫可在 URL 內嵌 token)或 AntiFox 容器可讀取的目錄路徑(如 /app/data 下)。複製需要有 git。",
+      "sourceRequired": "白箱模式請填寫原始碼 repo 位址或本地目錄"
     }
   },
   "findings": {
