@@ -275,7 +275,9 @@ func (s *Server) aiReportCall(base, key, method, path string, body any, out any)
 		return err
 	}
 	defer resp.Body.Close()
-	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	// Generous cap: AI-Report list responses can be large (projects embed base64
+	// logos), so a small limit would truncate the JSON and break parsing.
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		msg := strings.TrimSpace(string(data))
 		if len(msg) > 300 {
@@ -398,6 +400,7 @@ func (s *Server) listAIReportProjects(w http.ResponseWriter, r *http.Request) {
 		ClientName string `json:"clientName"`
 	}
 	if err := s.aiReportCall(base, key, http.MethodGet, "/api/projects", nil, &raw); err != nil {
+		log.Printf("[aireport] list projects failed (base=%s): %v", base, err)
 		writeErr(w, 400, err.Error())
 		return
 	}
@@ -405,6 +408,7 @@ func (s *Server) listAIReportProjects(w http.ResponseWriter, r *http.Request) {
 	for _, p := range raw {
 		out = append(out, map[string]string{"id": p.ID, "name": p.Name, "client_name": p.ClientName})
 	}
+	log.Printf("[aireport] list projects: %d project(s) from %s", len(out), base)
 	writeJSON(w, 200, out)
 }
 

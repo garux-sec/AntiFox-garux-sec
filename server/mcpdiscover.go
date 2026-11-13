@@ -34,7 +34,18 @@ func connectMCP(ctx context.Context, m *db.MCPServer) (mcpClient, error) {
 		if m.URL == "" {
 			return nil, fmt.Errorf("http transport is missing a URL")
 		}
-		return mcphttp.New(ctx, m.Name, m.URL, jsonStrMap(m.Headers))
+		// For http MCPs the env map doubles as request headers (the Asset-Sync
+		// ScopeSentry convention + the MCP config UI's "Environment variables"), merged
+		// with any explicit headers (which win on conflict). Without this, an http MCP
+		// that carries its auth (e.g. X-API-Key) in env would dial unauthenticated.
+		hdr := map[string]string{}
+		for k, v := range jsonStrMap(m.Env) {
+			hdr[k] = v
+		}
+		for k, v := range jsonStrMap(m.Headers) {
+			hdr[k] = v
+		}
+		return mcphttp.New(ctx, m.Name, m.URL, hdr)
 	default:
 		return nil, fmt.Errorf("unknown transport %q", m.Transport)
 	}
